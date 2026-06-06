@@ -91,7 +91,7 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
       <div className="flex items-center h-12 px-3 border-b border-gray-800 flex-shrink-0">
         {!collapsed && (
           <span className="flex-1 font-semibold text-gray-100 text-sm tracking-tight truncate">
-            kb-markdown
+            dt-kb
           </span>
         )}
         <button

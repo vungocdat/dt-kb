@@ -42,8 +42,8 @@ Inspired by docmost and One Markdown
 ### Installation
 
 ```sh
-git clone https://github.com/your-username/kb-markdown.git
-cd kb-markdown
+git clone https://github.com/your-username/dt-kb.git
+cd dt-kb
 npm install
 ```
 
@@ -101,13 +101,13 @@ npm start           # serves everything on the configured PORT
 
 ```ini
 [Unit]
-Description=kb-markdown
+Description=dt-kb
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/kb-markdown
-EnvironmentFile=/opt/kb-markdown/.env
+WorkingDirectory=/opt/dt-kb
+EnvironmentFile=/opt/dt-kb/.env
 ExecStart=/usr/bin/node server/dist/index.js
 Restart=on-failure
 User=kb

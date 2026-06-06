@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   }
 
   serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' }, (info) => {
-    console.log(`kb-markdown API listening on http://0.0.0.0:${info.port}`);
+    console.log(`dt-kb API listening on http://0.0.0.0:${info.port}`);
   });
 }
 

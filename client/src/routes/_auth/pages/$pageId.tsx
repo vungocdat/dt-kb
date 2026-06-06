@@ -90,7 +90,7 @@ function PageView() {
         const p = await getPage(pageId)
         if (!cancelled) {
           setPage(p)
-          document.title = `${p.title} — kb-markdown`
+          document.title = `${p.title} — dt-kb`
         }
       } catch {
         if (!cancelled) setError('Page not found or failed to load.')
@@ -103,7 +103,7 @@ function PageView() {
 
     return () => {
       cancelled = true
-      document.title = 'kb-markdown'
+      document.title = 'dt-kb'
     }
   }, [pageId, setMode])
 

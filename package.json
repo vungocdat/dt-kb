@@ -1,5 +1,5 @@
 {
-  "name": "kb-markdown",
+  "name": "dt-kb",
   "private": true,
   "workspaces": ["server", "client"],
   "scripts": {

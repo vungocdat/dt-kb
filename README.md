@@ -127,6 +127,19 @@ location / {
 
 `X-Forwarded-For` is used by the login rate limiter (5 attempts / 60 s per IP), so set it when running behind a proxy.
 
+## Updating
+
+```sh
+cd /opt/dt-kb
+git pull origin main
+npm install            # only needed if dependencies changed
+npm run build
+npm run db:migrate     # only needed if there are new migrations
+sudo systemctl restart dt-kb
+```
+
+The database (`data/kb.db`) is untouched by these steps. All four commands are idempotent — safe to run every time without checking what changed.
+
 ## Data
 
 All data lives in a single SQLite file (`data/kb.db` by default, controlled by `DB_PATH`). Back this file up — it is the only stateful component of the application.

@@ -28,4 +28,5 @@ jobs:
           path: |
             server/dist/
             server/public/
+            server/db/migrations/
             node_modules/

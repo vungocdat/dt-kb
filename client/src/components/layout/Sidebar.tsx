@@ -105,7 +105,7 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
       <div className="flex items-center h-12 px-3 border-b border-gray-800 flex-shrink-0">
         {!collapsed && (
           <Link to="/" className="flex-1 font-semibold text-gray-100 text-sm tracking-tight truncate hover:text-blue-400 transition-colors">
-            dt-kb
+            DT knowledge base
           </Link>
         )}
         <button

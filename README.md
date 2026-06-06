@@ -1,6 +1,8 @@
-# kb-markdown
+# DT Knowledge base
 
 A self-hosted, single-user knowledge base where every page is stored as raw Markdown. Built for sysadmins and developers who want a fast, private place to keep code snippets, tech notes, and learning journals — with no database overhead beyond a single SQLite file.
+
+Inspired by docmost and One Markdown
 
 ## Features
 
@@ -125,51 +127,8 @@ location / {
 
 `X-Forwarded-For` is used by the login rate limiter (5 attempts / 60 s per IP), so set it when running behind a proxy.
 
-### GitHub Actions CI/CD
-
-```yaml
-name: CI/CD
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm -w client run typecheck
-      - run: npm run build
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /opt/kb-markdown
-            git pull origin main
-            npm ci
-            npm run build
-            npm run db:migrate
-            systemctl restart kb-markdown
-```
-
 ## Data
 
 All data lives in a single SQLite file (`data/kb.db` by default, controlled by `DB_PATH`). Back this file up — it is the only stateful component of the application.
 
 Markdown source is stored in `pages.content`; rendered HTML is cached in `pages.content_html` and regenerated on every save. Deleting a page re-parents its children to the deleted page's parent rather than cascading.
-
-## License
-
-MIT

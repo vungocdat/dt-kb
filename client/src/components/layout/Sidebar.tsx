@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
-import { getSpaces, createSpace, updateSpace, type Space } from '../../api'
+import { getSpaces, createSpace, importSpace, updateSpace, type Space } from '../../api'
 import SpaceSection from './SpaceSection'
 import { Skeleton } from '../ui/Skeleton'
 
@@ -19,6 +19,7 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
   const [newSpaceName, setNewSpaceName] = useState('')
   const [draggedSpaceId, setDraggedSpaceId] = useState<string | null>(null)
   const [dragOverSpaceId, setDragOverSpaceId] = useState<string | null>(null)
+  const importSpaceInputRef = useRef<HTMLInputElement>(null)
 
   const loadSpaces = async () => {
     try {
@@ -32,6 +33,18 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
   useEffect(() => {
     void loadSpaces()
   }, [refreshKey])
+
+  const handleImportSpace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    try {
+      await importSpace(file)
+      await loadSpaces()
+    } catch {
+      // silently fail
+    }
+  }
 
   const handleCreateSpace = async () => {
     const name = newSpaceName.trim()
@@ -192,6 +205,30 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
               New Space
             </button>
           )}
+        </div>
+      )}
+
+      {/* Import space */}
+      {!collapsed && (
+        <div className="px-3 py-2 border-t border-gray-800 flex-shrink-0">
+          <button
+            onClick={() => importSpaceInputRef.current?.click()}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded transition-colors"
+            title="Import space from ZIP"
+          >
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            Import Space
+          </button>
+          <input
+            ref={importSpaceInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            onChange={(e) => void handleImportSpace(e)}
+          />
         </div>
       )}
     </div>

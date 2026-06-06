@@ -146,7 +146,7 @@ export async function getPage(id: string): Promise<Page> {
 }
 
 export async function createPage(
-  data: Pick<Page, 'spaceId' | 'title'> & { parentId?: string | null },
+  data: Pick<Page, 'spaceId' | 'title'> & { parentId?: string | null; content?: string },
 ): Promise<Page> {
   return apiFetch<Page>('/api/pages', {
     method: 'POST',
@@ -170,7 +170,7 @@ export async function deletePage(id: string): Promise<void> {
 
 export async function movePage(
   id: string,
-  data: { parentId: string | null; sortOrder?: number },
+  data: { parentId: string | null; sortOrder?: number; spaceId?: string },
 ): Promise<Page> {
   return apiFetch<Page>(`/api/pages/${id}/move`, {
     method: 'PATCH',
@@ -187,4 +187,24 @@ export async function search(
   const params = new URLSearchParams({ q })
   if (spaceId) params.set('spaceId', spaceId)
   return apiFetch<SearchResult[]>(`/api/search?${params.toString()}`)
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+
+export async function exportSpace(id: string): Promise<Blob> {
+  const res = await fetch(`/api/spaces/${id}/export`, { credentials: 'include' })
+  if (!res.ok) throw new Error('Export failed')
+  return res.blob()
+}
+
+export async function importSpace(file: File): Promise<Space> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch('/api/spaces/import', {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
+  if (!res.ok) throw new Error('Import failed')
+  return res.json() as Promise<Space>
 }

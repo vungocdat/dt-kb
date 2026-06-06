@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { getSpaceTree, deletePage, updatePage, movePage, type PageTreeNode } from '../../api'
+import { dragState } from './dragState'
 
 interface PageTreeProps {
   spaceId: string
@@ -42,11 +43,15 @@ export default function PageTree({
 
   const handleDragStart = (id: string) => {
     setDraggedId(id)
+    dragState.pageId = id
+    dragState.spaceId = spaceId
   }
 
   const handleDragEnd = () => {
     setDraggedId(null)
     setDragOverId(null)
+    dragState.pageId = null
+    dragState.spaceId = null
   }
 
   const handleDragOver = (id: string) => {

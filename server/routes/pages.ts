@@ -66,6 +66,22 @@ const deletePageTxn = sqlite.transaction((id: string) => {
   stmtDeletePage.run(id);
 });
 
+const stmtUpdateDescendantsSpace = sqlite.prepare(`
+  WITH RECURSIVE descendants(id) AS (
+    SELECT id FROM pages WHERE id = ?
+    UNION ALL
+    SELECT p.id FROM pages p JOIN descendants d ON p.parent_id = d.id
+  )
+  UPDATE pages SET space_id = ? WHERE id IN (SELECT id FROM descendants)
+`);
+
+const crossSpaceMoveTxn = sqlite.transaction((id: string, targetSpaceId: string, parentId: string | null, sortOrder: number) => {
+  stmtUpdateDescendantsSpace.run(id, targetSpaceId);
+  sqlite.prepare(
+    `UPDATE pages SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?`
+  ).run(parentId, sortOrder, Math.floor(Date.now() / 1000), id);
+});
+
 function toPage(row: PageRow): Page {
   return {
     id: row.id,
@@ -97,6 +113,7 @@ const updateSchema = z
 const moveSchema = z.object({
   parentId: z.string().min(1).nullable(),
   sortOrder: z.number().int().optional(),
+  spaceId: z.string().min(1).optional(),
 });
 
 export const pagesRouter = new Hono();
@@ -193,7 +210,7 @@ pagesRouter.delete('/:id', (c) => {
   return c.body(null, 204);
 });
 
-// PATCH /:id/move — change parent and/or ordering
+// PATCH /:id/move — change parent and/or ordering, optionally across spaces
 pagesRouter.patch('/:id/move', zValidator('json', moveSchema), (c) => {
   const id = c.req.param('id');
   const body = c.req.valid('json');
@@ -201,24 +218,31 @@ pagesRouter.patch('/:id/move', zValidator('json', moveSchema), (c) => {
   const existing = stmtGetPage.get(id);
   if (!existing) throw new HTTPException(404, { message: 'Page not found' });
 
-  // Guard against self-parenting and cross-space moves.
   if (body.parentId === id) {
     throw new HTTPException(400, { message: 'A page cannot be its own parent' });
   }
+
+  const targetSpaceId = body.spaceId ?? existing.space_id;
+
   if (body.parentId) {
     const parent = stmtGetPage.get(body.parentId);
     if (!parent) throw new HTTPException(404, { message: 'Parent page not found' });
-    if (parent.space_id !== existing.space_id) {
-      throw new HTTPException(400, { message: 'Cannot move page across spaces' });
+    if (parent.space_id !== targetSpaceId) {
+      throw new HTTPException(400, { message: 'Parent page is in a different space' });
     }
   }
 
   const sortOrder = body.sortOrder ?? existing.sort_order;
-  sqlite
-    .prepare(
-      `UPDATE pages SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
-    )
-    .run(body.parentId, sortOrder, Math.floor(Date.now() / 1000), id);
+
+  if (targetSpaceId !== existing.space_id) {
+    crossSpaceMoveTxn(id, targetSpaceId, body.parentId ?? null, sortOrder);
+  } else {
+    sqlite
+      .prepare(
+        `UPDATE pages SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(body.parentId, sortOrder, Math.floor(Date.now() / 1000), id);
+  }
 
   const row = stmtGetPage.get(id);
   return c.json(toPage(row!));

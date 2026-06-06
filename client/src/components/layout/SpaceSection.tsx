@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPage, deleteSpace, getSpaceTree, movePage, updateSpace, type Space, type PageTreeNode } from '../../api'
+import { createPage, deleteSpace, exportSpace, getSpaceTree, movePage, updateSpace, type Space, type PageTreeNode } from '../../api'
 import PageTree from './PageTree'
 import { dragState } from './dragState'
 
@@ -29,6 +29,7 @@ export default function SpaceSection({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const importPageInputRef = useRef<HTMLInputElement>(null)
   const deletingRef = useRef(false)
   const dragCounter = useRef(0)
 
@@ -76,6 +77,36 @@ export default function SpaceSection({
   const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') void commitRename()
     if (e.key === 'Escape') setRenaming(false)
+  }
+
+  const handleExportSpace = async () => {
+    try {
+      const blob = await exportSpace(space.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${space.name}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently fail
+    }
+  }
+
+  const handleImportPage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const content = await file.text()
+    const title = file.name.replace(/\.md$/i, '') || 'Untitled'
+    try {
+      await createPage({ spaceId: space.id, title, content })
+      await refreshTree()
+      setTreeVersion((v) => v + 1)
+      onPageCreated()
+    } catch {
+      // silently fail
+    }
   }
 
   const handleAddPage = async (e: React.MouseEvent) => {
@@ -226,6 +257,7 @@ export default function SpaceSection({
           </div>
         ) : hovering && (
           <div className="flex items-center gap-0.5 flex-shrink-0">
+            {/* Add page */}
             <button
               onClick={handleAddPage}
               aria-label={`New page in ${space.name}`}
@@ -245,6 +277,34 @@ export default function SpaceSection({
                 />
               </svg>
             </button>
+
+            {/* Export space as ZIP */}
+            <button
+              onClick={(e) => { e.stopPropagation(); void handleExportSpace() }}
+              aria-label={`Export space ${space.name}`}
+              title="Export space as ZIP"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-opacity flex-shrink-0"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+
+            {/* Import .md file as page */}
+            <button
+              onClick={(e) => { e.stopPropagation(); importPageInputRef.current?.click() }}
+              aria-label={`Import page into ${space.name}`}
+              title="Import .md file as page"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-opacity flex-shrink-0"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+            </button>
+
+            {/* Delete space */}
             <button
               onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
               aria-label={`Delete space ${space.name}`}
@@ -264,6 +324,15 @@ export default function SpaceSection({
                 />
               </svg>
             </button>
+
+            {/* Hidden file input for .md import */}
+            <input
+              ref={importPageInputRef}
+              type="file"
+              accept=".md,text/markdown"
+              className="hidden"
+              onChange={(e) => void handleImportPage(e)}
+            />
           </div>
         )}
       </div>

@@ -67,7 +67,7 @@ Paste the printed values into `.env`. Your `.env` should look like:
 KB_USERNAME=admin
 KB_PASSWORD_HASH=$2b$12$...
 SESSION_SECRET=<32-char random string>
-PORT=3030
+PORT=3333
 DB_PATH=./data/kb.db
 NODE_ENV=development
 ```
@@ -85,7 +85,7 @@ npm run db:migrate
 npm run dev
 ```
 
-The API starts on `http://localhost:3030` and the Vite dev server on `http://localhost:5173`.
+The API starts on `http://localhost:3333` and the Vite dev server on `http://localhost:5173`.
 
 ## Production Deployment
 
@@ -120,7 +120,7 @@ WantedBy=multi-user.target
 
 ```nginx
 location / {
-    proxy_pass http://localhost:3030;
+    proxy_pass http://localhost:3333;
     proxy_set_header X-Forwarded-For $remote_addr;
 }
 ```

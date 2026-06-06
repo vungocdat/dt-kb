@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPage, deleteSpace, getSpaceTree, updateSpace, type Space, type PageTreeNode } from '../../api'
+import { createPage, deleteSpace, getSpaceTree, movePage, updateSpace, type Space, type PageTreeNode } from '../../api'
 import PageTree from './PageTree'
+import { dragState } from './dragState'
 
 interface SpaceSectionProps {
   space: Space
@@ -17,15 +18,19 @@ export default function SpaceSection({
   onSpaceUpdated,
   onSpaceDeleted,
 }: SpaceSectionProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(
+    () => localStorage.getItem(`kb:space:${space.id}:expanded`) === 'true'
+  )
   const [tree, setTree] = useState<PageTreeNode[]>([])
   const [treeVersion, setTreeVersion] = useState(0)
   const [hovering, setHovering] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const deletingRef = useRef(false)
+  const dragCounter = useRef(0)
 
   const refreshTree = async () => {
     try {
@@ -100,12 +105,51 @@ export default function SpaceSection({
     }
   }
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!dragState.pageId || dragState.spaceId === space.id) return
+    e.preventDefault()
+    dragCounter.current++
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    dragCounter.current--
+    if (dragCounter.current === 0) setIsDragOver(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!dragState.pageId || dragState.spaceId === space.id) return
+    e.preventDefault()
+  }
+
+  const handleSpaceDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragOver(false)
+    if (!dragState.pageId || dragState.spaceId === space.id) return
+
+    const sourcePageId = dragState.pageId
+    const sourceSpaceId = dragState.spaceId
+
+    try {
+      await movePage(sourcePageId, { parentId: null, spaceId: space.id })
+      if (sourceSpaceId) {
+        window.dispatchEvent(new CustomEvent('kb:page-deleted', { detail: { spaceId: sourceSpaceId } }))
+      }
+      await refreshTree()
+      setExpanded(true)
+      localStorage.setItem(`kb:space:${space.id}:expanded`, 'true')
+    } catch {
+      // silently fail
+    }
+  }
+
   if (collapsed) {
     return (
       <div
         className="px-2 py-1.5 flex items-center justify-center text-lg cursor-pointer hover:bg-gray-800 rounded mx-1 my-0.5"
         title={space.name}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setExpanded((v) => { const next = !v; localStorage.setItem(`kb:space:${space.id}:expanded`, String(next)); return next })}
       >
         <span>{space.icon || '📁'}</span>
       </div>
@@ -113,12 +157,18 @@ export default function SpaceSection({
   }
 
   return (
-    <div className="mb-1">
+    <div
+      className={`mb-1 rounded transition-colors ${isDragOver ? 'ring-1 ring-blue-500 bg-blue-500/5' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={(e) => void handleSpaceDrop(e)}
+    >
       <div
         className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer hover:bg-gray-800 rounded mx-1 group select-none"
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => { if (!confirmingDelete) setHovering(false) }}
-        onClick={() => { if (!confirmingDelete) setExpanded((v) => !v) }}
+        onClick={() => { if (!confirmingDelete) setExpanded((v) => { const next = !v; localStorage.setItem(`kb:space:${space.id}:expanded`, String(next)); return next }) }}
       >
         <svg
           className={`w-3 h-3 text-gray-500 flex-shrink-0 transition-transform ${

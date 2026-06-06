@@ -28,4 +28,4 @@ jobs:
           path: |
             server/dist/
             server/public/
-            server/node_modules/
+            node_modules/

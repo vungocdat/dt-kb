@@ -1,0 +1,15 @@
+{
+  "name": "kb-markdown",
+  "private": true,
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "concurrently \"npm -w server run dev\" \"npm -w client run dev\"",
+    "build": "npm -w client run build && npm -w server run build",
+    "start": "node server/dist/index.js",
+    "setup": "npx tsx scripts/setup.ts",
+    "db:migrate": "npm -w server run db:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

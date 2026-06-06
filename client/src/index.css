@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Prose overrides for dark mode rendered markdown */
+.prose pre {
+  padding: 0;
+  background: transparent;
+}
+
+.prose code:not(pre code) {
+  background-color: rgb(55 65 81); /* gray-700 */
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+/* highlight.js block styling */
+.prose pre code.hljs {
+  border-radius: 0.5rem;
+}

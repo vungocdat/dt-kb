@@ -6,14 +6,16 @@ Inspired by docmost and One Markdown
 
 ## Features
 
-- **Spaces** — top-level containers to organise pages by topic or project
-- **Nested pages** — tree structure with unlimited depth, drag-free re-parenting
+- **Spaces** — top-level containers to organise pages by topic or project; drag to reorder
+- **Nested pages** — tree structure with unlimited depth; drag to reorder siblings or move across spaces
 - **Dual view per page** — Read mode (rendered HTML with syntax highlighting) and Edit mode (CodeMirror raw Markdown editor)
 - **Auto-save** — edits are saved 800 ms after you stop typing
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
 - **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`
 - **Keyboard shortcuts** — `Ctrl/Cmd+E` toggles Edit/Read mode, `Ctrl/Cmd+K` opens search
+- **Export** — download any page as a `.md` file, or export a whole space as a `.zip` archive (includes all pages and hierarchy metadata for re-import)
+- **Import** — import a `.md` file as a new page into any space, or restore a space from a previously exported `.zip`
 - **Login-protected** — single credential set in `.env`, no users table, session cookies via `iron-session`
 - **Password change** — change your password from the settings page without restarting the server
 - **Dark mode** — hardcoded, no toggle

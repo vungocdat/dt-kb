@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
 import { getSpaces, createSpace, updateSpace, type Space } from '../../api'
 import SpaceSection from './SpaceSection'
@@ -90,9 +91,9 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
       {/* Branding + collapse toggle */}
       <div className="flex items-center h-12 px-3 border-b border-gray-800 flex-shrink-0">
         {!collapsed && (
-          <span className="flex-1 font-semibold text-gray-100 text-sm tracking-tight truncate">
+          <Link to="/" className="flex-1 font-semibold text-gray-100 text-sm tracking-tight truncate hover:text-blue-400 transition-colors">
             dt-kb
-          </span>
+          </Link>
         )}
         <button
           onClick={toggleSidebar}

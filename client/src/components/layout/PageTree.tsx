@@ -10,6 +10,7 @@ interface PageTreeProps {
   tree: PageTreeNode[]
   onTreeLoaded: (tree: PageTreeNode[]) => void
   onPageCreated?: () => void
+  onSubpageCreated?: () => Promise<void>
 }
 
 export default function PageTree({
@@ -19,6 +20,7 @@ export default function PageTree({
   tree,
   onTreeLoaded,
   onPageCreated,
+  onSubpageCreated,
 }: PageTreeProps) {
   const params = useParams({ strict: false })
   // pageId param is present on /pages/$pageId route
@@ -132,6 +134,7 @@ export default function PageTree({
           currentPageId={currentPageId}
           onTreeLoaded={onTreeLoaded}
           onPageCreated={onPageCreated}
+          onSubpageCreated={onSubpageCreated}
           draggedId={draggedId}
           dragOverId={dragOverId}
           onDragStart={handleDragStart}
@@ -152,6 +155,7 @@ interface PageTreeItemProps {
   currentPageId: string | undefined
   onTreeLoaded: (tree: PageTreeNode[]) => void
   onPageCreated?: () => void
+  onSubpageCreated?: () => Promise<void>
   draggedId: string | null
   dragOverId: string | null
   onDragStart: (id: string) => void
@@ -168,6 +172,7 @@ function PageTreeItem({
   currentPageId,
   onTreeLoaded,
   onPageCreated,
+  onSubpageCreated,
   draggedId,
   dragOverId,
   onDragStart,
@@ -228,9 +233,7 @@ function PageTreeItem({
     e.preventDefault()
     try {
       await createPage({ spaceId, title: 'Untitled', parentId: node.id })
-      const fresh = await getSpaceTree(spaceId)
-      onTreeLoaded(fresh)
-      onPageCreated?.()
+      await onSubpageCreated?.()
     } catch {
       // silently ignore
     }
@@ -383,6 +386,7 @@ function PageTreeItem({
               currentPageId={currentPageId}
               onTreeLoaded={onTreeLoaded}
               onPageCreated={onPageCreated}
+              onSubpageCreated={onSubpageCreated}
               draggedId={draggedId}
               dragOverId={dragOverId}
               onDragStart={onDragStart}

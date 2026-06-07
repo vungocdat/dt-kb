@@ -346,6 +346,11 @@ export default function SpaceSection({
           tree={tree}
           onTreeLoaded={setTree}
           onPageCreated={onPageCreated}
+          onSubpageCreated={async () => {
+            await refreshTree()
+            setTreeVersion((v) => v + 1)
+            onPageCreated()
+          }}
         />
       )}
     </div>

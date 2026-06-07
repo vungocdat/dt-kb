@@ -202,6 +202,25 @@ spacesRouter.delete('/:id', (c) => {
 // is registered first; Hono matches in declaration order.
 const MAX_IMPORT_BYTES = 50 * 1024 * 1024; // 50 MB
 
+// ── Filename sanitization ────────────────────────────────────────────────────
+
+/**
+ * Sanitize a page title into a safe filesystem/ZIP component.
+ * Keeps the title human-readable: only strips characters that are illegal in
+ * common filesystems (\/:*?"<>|) and replaces them with '-', then collapses
+ * runs of whitespace to a single space and trims. Does NOT lowercase or slug.
+ */
+function sanitizeTitle(title: string): string {
+  return (
+    title
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Untitled'
+  );
+}
+
+// ── Legacy format (v1 _meta.json) ───────────────────────────────────────────
+
 interface ImportMeta {
   version: number;
   spaceName: string;
@@ -214,6 +233,200 @@ interface ImportMeta {
     filename: string;
   }>;
 }
+
+/**
+ * Import handler for the original flat-file format (ZIP contains _meta.json
+ * and a pages/ folder). Kept unchanged for backward compatibility.
+ */
+async function importLegacyFormat(
+  zip: JSZip,
+  meta: ImportMeta,
+): Promise<Array<{
+  newId: string;
+  title: string;
+  content: string;
+  contentHtml: string;
+  parentId: string | null;
+  sortOrder: number;
+}>> {
+  const pages = Array.isArray(meta.pages) ? meta.pages : [];
+  const oldToNewId = new Map<string, string>();
+  const renderedPages: Array<{
+    newId: string;
+    title: string;
+    content: string;
+    contentHtml: string;
+    parentId: string | null;
+    sortOrder: number;
+  }> = [];
+
+  // Topological sort: process pages whose parent has already been assigned a
+  // new ID (or has no parent). Guard against malformed ZIPs with cycles.
+  const remaining = [...pages];
+  while (remaining.length > 0) {
+    const sizeBefore = remaining.length;
+    for (let i = remaining.length - 1; i >= 0; i--) {
+      const p = remaining[i];
+      if (p.parentId !== null && !oldToNewId.has(p.parentId)) continue;
+
+      const pageFile = zip.file(`pages/${p.filename}`);
+      const content = pageFile ? await pageFile.async('string') : '';
+      const contentHtml = content ? await renderMarkdown(content) : '';
+      const newId = uuidv4();
+
+      oldToNewId.set(p.id, newId);
+      renderedPages.push({
+        newId,
+        title: p.title ?? 'Untitled',
+        content,
+        contentHtml,
+        parentId: p.parentId !== null ? (oldToNewId.get(p.parentId) ?? null) : null,
+        sortOrder: p.sortOrder ?? 0,
+      });
+      remaining.splice(i, 1);
+    }
+    // Cycle guard: if nothing was processed this pass, stop to avoid an
+    // infinite loop. Remaining pages will be inserted as root-level pages.
+    if (remaining.length === sizeBefore) {
+      for (const p of remaining) {
+        const pageFile = zip.file(`pages/${p.filename}`);
+        const content = pageFile ? await pageFile.async('string') : '';
+        const contentHtml = content ? await renderMarkdown(content) : '';
+        const newId = uuidv4();
+        oldToNewId.set(p.id, newId);
+        renderedPages.push({
+          newId,
+          title: p.title ?? 'Untitled',
+          content,
+          contentHtml,
+          parentId: null, // break the cycle by orphaning to root
+          sortOrder: p.sortOrder ?? 0,
+        });
+      }
+      break;
+    }
+  }
+
+  return renderedPages;
+}
+
+// ── New folder-hierarchy format ──────────────────────────────────────────────
+
+/**
+ * Import handler for the Docmost-style folder-hierarchy format. The ZIP
+ * contains .md files whose paths encode the tree structure, e.g.:
+ *   DevOps.md                     → root page "DevOps"
+ *   DevOps/Monitoring.md          → child of DevOps
+ *   DevOps/Monitoring/Icinga.md   → grandchild
+ *
+ * Directories that have no corresponding .md file (can occur when Docmost
+ * exports a page whose title contained '/') are synthesised as virtual empty
+ * pages so the tree structure is preserved.
+ */
+async function importFolderFormat(zip: JSZip): Promise<
+  Array<{
+    newId: string;
+    title: string;
+    content: string;
+    contentHtml: string;
+    parentId: string | null;
+    sortOrder: number;
+  }>
+> {
+  // Collect every .md file path (JSZip keys, forward-slash separated).
+  // JSZip represents directories as entries ending with '/'; skip those.
+  const mdPaths: string[] = [];
+  zip.forEach((relativePath, file) => {
+    if (!file.dir && relativePath.endsWith('.md')) {
+      mdPaths.push(relativePath);
+    }
+  });
+
+  // Derive the set of all directory paths that are ancestors of .md files.
+  // For a file at A/B/C.md the ancestors are ['A', 'A/B'].
+  // Any directory that has no sibling .md file (e.g. 'A' with no 'A.md')
+  // will become a virtual page with empty content.
+  const dirPaths = new Set<string>();
+  for (const p of mdPaths) {
+    const segments = p.split('/');
+    // walk all prefix directories (exclude the file itself)
+    for (let depth = 1; depth < segments.length; depth++) {
+      dirPaths.add(segments.slice(0, depth).join('/'));
+    }
+  }
+
+  // A path key is the path without the .md extension for files,
+  // or the bare directory path for virtual nodes.
+  // Build a union of all path keys that need a page node.
+  const mdPathKeys = new Set(mdPaths.map((p) => p.slice(0, -'.md'.length)));
+  const virtualDirKeys = new Set([...dirPaths].filter((d) => !mdPathKeys.has(d)));
+
+  // Combine into a single list of { pathKey, isVirtual }.
+  interface PageEntry {
+    pathKey: string;   // e.g. "DevOps/Monitoring"
+    isVirtual: boolean;
+  }
+  const allEntries: PageEntry[] = [
+    ...[...mdPathKeys].map((k) => ({ pathKey: k, isVirtual: false })),
+    ...[...virtualDirKeys].map((k) => ({ pathKey: k, isVirtual: true })),
+  ];
+
+  // Sort by depth (number of '/') then alphabetically so parents are always
+  // processed before their children — no need for a separate topological pass.
+  allEntries.sort((a, b) => {
+    const depthA = (a.pathKey.match(/\//g) ?? []).length;
+    const depthB = (b.pathKey.match(/\//g) ?? []).length;
+    if (depthA !== depthB) return depthA - depthB;
+    return a.pathKey.localeCompare(b.pathKey);
+  });
+
+  // Assign a UUID to each path key before rendering so parent IDs can be
+  // resolved during the same pass.
+  const pathToId = new Map<string, string>();
+  for (const entry of allEntries) {
+    pathToId.set(entry.pathKey, uuidv4());
+  }
+
+  const renderedPages: Array<{
+    newId: string;
+    title: string;
+    content: string;
+    contentHtml: string;
+    parentId: string | null;
+    sortOrder: number;
+  }> = [];
+
+  // Track sibling insertion order within each parent to assign sort_order.
+  const siblingCounter = new Map<string | null, number>();
+
+  for (const entry of allEntries) {
+    const segments = entry.pathKey.split('/');
+    const title = segments[segments.length - 1]; // last segment = page title
+
+    const parentPathKey = segments.length > 1 ? segments.slice(0, -1).join('/') : null;
+    const parentId = parentPathKey !== null ? (pathToId.get(parentPathKey) ?? null) : null;
+
+    const content = entry.isVirtual ? '' : (await zip.file(`${entry.pathKey}.md`)?.async('string')) ?? '';
+    const contentHtml = content ? await renderMarkdown(content) : '';
+
+    // Sort order = insertion sequence within this parent bucket.
+    const sortOrder = siblingCounter.get(parentId) ?? 0;
+    siblingCounter.set(parentId, sortOrder + 1);
+
+    renderedPages.push({
+      newId: pathToId.get(entry.pathKey)!,
+      title,
+      content,
+      contentHtml,
+      parentId,
+      sortOrder,
+    });
+  }
+
+  return renderedPages;
+}
+
+// ── /import route ────────────────────────────────────────────────────────────
 
 spacesRouter.post('/import', async (c) => {
   let formData: FormData;
@@ -242,108 +455,56 @@ spacesRouter.post('/import', async (c) => {
     throw new HTTPException(400, { message: 'Invalid ZIP file' });
   }
 
-  const metaFile = zip.file('_meta.json');
-  if (!metaFile) {
-    throw new HTTPException(400, { message: 'Missing _meta.json in ZIP' });
-  }
-
-  let meta: ImportMeta;
-  try {
-    meta = JSON.parse(await metaFile.async('string')) as ImportMeta;
-  } catch {
-    throw new HTTPException(400, { message: 'Invalid _meta.json — not valid JSON' });
-  }
-
-  if (!meta.spaceName || typeof meta.spaceName !== 'string') {
-    throw new HTTPException(400, { message: 'Invalid _meta.json — missing spaceName' });
-  }
-
-  const pages = Array.isArray(meta.pages) ? meta.pages : [];
-
-  // Create space and all pages in a single transaction for atomicity.
-  // Pages are resolved in topological order (parents before children) via
-  // a processing loop with a cycle guard.
   const spaceId = uuidv4();
   const now = Math.floor(Date.now() / 1000);
 
-  // Pre-render all page content outside the synchronous transaction so we
-  // don't block the SQLite write lock while awaiting async markdown rendering.
-  const oldToNewId = new Map<string, string>();
-  const renderedPages: Array<{
-    oldId: string;
-    newId: string;
-    title: string;
-    content: string;
-    contentHtml: string;
-    parentId: string | null;
-    sortOrder: number;
-  }> = [];
+  let spaceName: string;
+  let spaceIcon = '📁';
+  let renderedPages: Awaited<ReturnType<typeof importFolderFormat>>;
 
-  // Topological sort: process pages whose parent has already been assigned a
-  // new ID (or has no parent). Guard against malformed ZIPs with cycles.
-  const remaining = [...pages];
-  while (remaining.length > 0) {
-    const sizeBefore = remaining.length;
-    for (let i = remaining.length - 1; i >= 0; i--) {
-      const p = remaining[i];
-      if (p.parentId !== null && !oldToNewId.has(p.parentId)) continue;
-
-      const pageFile = zip.file(`pages/${p.filename}`);
-      const content = pageFile ? await pageFile.async('string') : '';
-      const contentHtml = content ? await renderMarkdown(content) : '';
-      const newId = uuidv4();
-
-      oldToNewId.set(p.id, newId);
-      renderedPages.push({
-        oldId: p.id,
-        newId,
-        title: p.title ?? 'Untitled',
-        content,
-        contentHtml,
-        parentId: p.parentId,
-        sortOrder: p.sortOrder ?? 0,
-      });
-      remaining.splice(i, 1);
+  const metaFile = zip.file('_meta.json');
+  if (metaFile) {
+    // ── Legacy format ──────────────────────────────────────────────────────
+    let meta: ImportMeta;
+    try {
+      meta = JSON.parse(await metaFile.async('string')) as ImportMeta;
+    } catch {
+      throw new HTTPException(400, { message: 'Invalid _meta.json — not valid JSON' });
     }
-    // Cycle guard: if nothing was processed this pass, stop to avoid an
-    // infinite loop. Remaining pages will be inserted as root-level pages.
-    if (remaining.length === sizeBefore) {
-      for (const p of remaining) {
-        const pageFile = zip.file(`pages/${p.filename}`);
-        const content = pageFile ? await pageFile.async('string') : '';
-        const contentHtml = content ? await renderMarkdown(content) : '';
-        const newId = uuidv4();
-        oldToNewId.set(p.id, newId);
-        renderedPages.push({
-          oldId: p.id,
-          newId,
-          title: p.title ?? 'Untitled',
-          content,
-          contentHtml,
-          parentId: null, // break the cycle by orphaning to root
-          sortOrder: p.sortOrder ?? 0,
-        });
-      }
-      break;
+
+    if (!meta.spaceName || typeof meta.spaceName !== 'string') {
+      throw new HTTPException(400, { message: 'Invalid _meta.json — missing spaceName' });
+    }
+
+    spaceName = meta.spaceName;
+    spaceIcon = meta.spaceIcon ?? '📁';
+    renderedPages = await importLegacyFormat(zip, meta);
+  } else {
+    // ── Folder-hierarchy format ────────────────────────────────────────────
+    // Space name: prefer explicit query param, otherwise fall back to generic.
+    spaceName = c.req.query('spaceName')?.trim() || 'Imported Space';
+    renderedPages = await importFolderFormat(zip);
+
+    if (renderedPages.length === 0) {
+      throw new HTTPException(400, { message: 'No .md files found in ZIP' });
     }
   }
 
   const importTxn = sqlite.transaction(() => {
     stmtInsertSpace.run({
       id: spaceId,
-      name: meta.spaceName.slice(0, 256),
+      name: spaceName.slice(0, 256),
       description: '',
-      icon: meta.spaceIcon ?? '📁',
+      icon: spaceIcon,
       sortOrder: 0,
       now,
     });
 
     for (const rp of renderedPages) {
-      const resolvedParentId = rp.parentId !== null ? (oldToNewId.get(rp.parentId) ?? null) : null;
       stmtInsertPageForImport.run({
         id: rp.newId,
         spaceId,
-        parentId: resolvedParentId,
+        parentId: rp.parentId,
         title: rp.title,
         content: rp.content,
         contentHtml: rp.contentHtml,
@@ -365,7 +526,9 @@ spacesRouter.post('/import', async (c) => {
   return c.json(toSpace(space), 201);
 });
 
-// GET /:id/export — download the space as a ZIP (pages as .md files + _meta.json)
+// GET /:id/export — download the space as a folder-hierarchy ZIP.
+// Each page's path mirrors the page tree: root pages become RootTitle.md,
+// their children become RootTitle/ChildTitle.md, and so on.
 // Declared after /import (static path) and before /:id/tree (also two-segment,
 // no ambiguity in Hono) to keep declaration order semantically clear.
 spacesRouter.get('/:id/export', async (c) => {
@@ -375,54 +538,77 @@ spacesRouter.get('/:id/export', async (c) => {
 
   const pages = stmtGetSpacePages.all(id);
 
-  const zip = new JSZip();
-  const usedFilenames = new Set<string>();
-  const pagesFolder = zip.folder('pages')!;
+  // Build a map from page id → its ZIP path (without .md extension) so we
+  // can resolve child paths after the parent path is known.
+  // Pages from stmtGetSpacePages are ordered by sort_order ASC, which means
+  // parents generally come before their children, but that is not guaranteed
+  // for all tree shapes. We therefore do a topological pass: iterate until
+  // all pages are placed, skipping any page whose parent isn't resolved yet.
+  const pathByPageId = new Map<string, string>(); // id → "A/B/C" (no .md)
+  // Track used paths within each parent directory to deduplicate siblings
+  // that share the same sanitized title.
+  const usedPathsInDir = new Map<string | null, Set<string>>(); // parentId → Set of basenames used
 
-  const pageMeta = pages.map((p) => {
-    // Sanitize the title into a safe filename. If the title is empty or
-    // consists entirely of unsupported characters, fall back to 'untitled'.
-    const base =
-      p.title
-        .replace(/[^a-zA-Z0-9 _-]/g, '')
-        .trim()
-        .replace(/ +/g, '-')
-        .toLowerCase() || 'untitled';
+  const remaining = [...pages];
+  while (remaining.length > 0) {
+    const sizeBefore = remaining.length;
 
-    let filename = `${base}.md`;
-    let counter = 1;
-    while (usedFilenames.has(filename)) {
-      filename = `${base}-${counter++}.md`;
+    for (let i = remaining.length - 1; i >= 0; i--) {
+      const p = remaining[i];
+
+      // Skip until parent path is resolved (or page is a root page).
+      if (p.parent_id !== null && !pathByPageId.has(p.parent_id)) continue;
+
+      const parentPath = p.parent_id !== null ? pathByPageId.get(p.parent_id)! : null;
+      const dirKey = parentPath; // null means ZIP root
+
+      if (!usedPathsInDir.has(dirKey)) usedPathsInDir.set(dirKey, new Set());
+      const usedInDir = usedPathsInDir.get(dirKey)!;
+
+      const base = sanitizeTitle(p.title);
+      let basename = base;
+      let counter = 2;
+      while (usedInDir.has(basename)) {
+        basename = `${base} (${counter++})`;
+      }
+      usedInDir.add(basename);
+
+      const zipPathKey = parentPath !== null ? `${parentPath}/${basename}` : basename;
+      pathByPageId.set(p.id, zipPathKey);
+      remaining.splice(i, 1);
     }
-    usedFilenames.add(filename);
-    pagesFolder.file(filename, p.content);
 
-    return {
-      id: p.id,
-      title: p.title,
-      parentId: p.parent_id,
-      sortOrder: p.sort_order,
-      filename,
-    };
-  });
+    // Cycle guard: if no page was resolved this pass, orphan remaining pages
+    // to the ZIP root to avoid an infinite loop.
+    if (remaining.length === sizeBefore) {
+      const rootUsed = usedPathsInDir.get(null) ?? new Set<string>();
+      usedPathsInDir.set(null, rootUsed);
+      for (const p of remaining) {
+        const base = sanitizeTitle(p.title);
+        let basename = base;
+        let counter = 2;
+        while (rootUsed.has(basename)) {
+          basename = `${base} (${counter++})`;
+        }
+        rootUsed.add(basename);
+        pathByPageId.set(p.id, basename);
+      }
+      break;
+    }
+  }
 
-  const meta = {
-    version: 1,
-    spaceName: spaceRow.name,
-    spaceIcon: spaceRow.icon,
-    exportedAt: Math.floor(Date.now() / 1000),
-    pages: pageMeta,
-  };
-  zip.file('_meta.json', JSON.stringify(meta, null, 2));
+  // Write each page's markdown into the ZIP at its resolved path.
+  const zip = new JSZip();
+  for (const p of pages) {
+    const zipPathKey = pathByPageId.get(p.id);
+    if (!zipPathKey) continue; // should never happen after the loop above
+    zip.file(`${zipPathKey}.md`, p.content);
+  }
 
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 
-  const safeName =
-    spaceRow.name
-      .replace(/[^a-zA-Z0-9 _-]/g, '')
-      .trim()
-      .replace(/ +/g, '-')
-      .toLowerCase() || 'space';
+  // Use the same readable sanitization for the download filename.
+  const safeName = sanitizeTitle(spaceRow.name).replace(/\s+/g, '-') || 'space';
 
   c.header('Content-Type', 'application/zip');
   c.header('Content-Disposition', `attachment; filename="${safeName}.zip"`);

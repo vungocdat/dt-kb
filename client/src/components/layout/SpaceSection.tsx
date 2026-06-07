@@ -345,6 +345,7 @@ export default function SpaceSection({
           depth={0}
           tree={tree}
           onTreeLoaded={setTree}
+          onPageCreated={onPageCreated}
         />
       )}
     </div>

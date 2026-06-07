@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { getSpaceTree, deletePage, updatePage, movePage, type PageTreeNode } from '../../api'
+import { getSpaceTree, createPage, deletePage, updatePage, movePage, type PageTreeNode } from '../../api'
 import { dragState } from './dragState'
 
 interface PageTreeProps {
@@ -9,6 +9,7 @@ interface PageTreeProps {
   depth: number
   tree: PageTreeNode[]
   onTreeLoaded: (tree: PageTreeNode[]) => void
+  onPageCreated?: () => void
 }
 
 export default function PageTree({
@@ -17,6 +18,7 @@ export default function PageTree({
   depth,
   tree,
   onTreeLoaded,
+  onPageCreated,
 }: PageTreeProps) {
   const params = useParams({ strict: false })
   // pageId param is present on /pages/$pageId route
@@ -129,6 +131,7 @@ export default function PageTree({
           depth={depth}
           currentPageId={currentPageId}
           onTreeLoaded={onTreeLoaded}
+          onPageCreated={onPageCreated}
           draggedId={draggedId}
           dragOverId={dragOverId}
           onDragStart={handleDragStart}
@@ -148,6 +151,7 @@ interface PageTreeItemProps {
   depth: number
   currentPageId: string | undefined
   onTreeLoaded: (tree: PageTreeNode[]) => void
+  onPageCreated?: () => void
   draggedId: string | null
   dragOverId: string | null
   onDragStart: (id: string) => void
@@ -163,6 +167,7 @@ function PageTreeItem({
   depth,
   currentPageId,
   onTreeLoaded,
+  onPageCreated,
   draggedId,
   dragOverId,
   onDragStart,
@@ -215,6 +220,19 @@ function PageTreeItem({
       onTreeLoaded(fresh)
     } catch {
       setConfirmingDelete(false)
+    }
+  }
+
+  const handleAddChild = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    try {
+      await createPage({ spaceId, title: 'Untitled', parentId: node.id })
+      const fresh = await getSpaceTree(spaceId)
+      onTreeLoaded(fresh)
+      onPageCreated?.()
+    } catch {
+      // silently ignore
     }
   }
 
@@ -318,25 +336,37 @@ function PageTreeItem({
             </button>
           </div>
         ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmingDelete(true) }}
-            aria-label={`Delete page ${node.title}`}
-            className="opacity-0 group-hover:opacity-100 p-0.5 mr-2 rounded text-gray-400 hover:text-red-400 hover:bg-gray-700 transition-opacity flex-shrink-0"
-          >
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 mr-2 flex-shrink-0 transition-opacity">
+            <button
+              onClick={(e) => void handleAddChild(e)}
+              aria-label={`Add child page under ${node.title}`}
+              title="Add child page"
+              className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmingDelete(true) }}
+              aria-label={`Delete page ${node.title}`}
+              className="p-0.5 rounded text-gray-400 hover:text-red-400 hover:bg-gray-700"
+            >
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
 
@@ -352,6 +382,7 @@ function PageTreeItem({
               depth={depth + 1}
               currentPageId={currentPageId}
               onTreeLoaded={onTreeLoaded}
+              onPageCreated={onPageCreated}
               draggedId={draggedId}
               dragOverId={dragOverId}
               onDragStart={onDragStart}

@@ -12,7 +12,7 @@ Inspired by docmost and One Markdown
 - **Auto-save** — edits are saved 800 ms after you stop typing
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
-- **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`
+- **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`; code blocks have a one-click copy-to-clipboard button
 - **Keyboard shortcuts** — `Ctrl/Cmd+E` toggles Edit/Read mode, `Ctrl/Cmd+K` opens search
 - **Export** — download any page as a `.md` file, or export a whole space as a `.zip` archive (includes all pages and hierarchy metadata for re-import)
 - **Import** — import a `.md` file as a new page into any space, or restore a space from a previously exported `.zip`

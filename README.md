@@ -2,7 +2,7 @@
 
 A self-hosted, single-user knowledge base where every page is stored as raw Markdown. Built for sysadmins and developers who want a fast, private place to keep code snippets, tech notes, and learning journals — with no database overhead beyond a single SQLite file.
 
-Inspired by docmost and One Markdown
+Inspired by Docmost and One Markdown
 
 ## Features
 

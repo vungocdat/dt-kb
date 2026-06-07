@@ -131,8 +131,21 @@ export async function deleteSpace(id: string): Promise<void> {
   return apiFetch<void>(`/api/spaces/${id}`, { method: 'DELETE' })
 }
 
+function flattenTree(nodes: PageTreeNode[]): PageTreeNode[] {
+  const result: PageTreeNode[] = []
+  const walk = (items: PageTreeNode[]) => {
+    for (const node of items) {
+      result.push(node)
+      if (node.children.length) walk(node.children)
+    }
+  }
+  walk(nodes)
+  return result
+}
+
 export async function getSpaceTree(id: string): Promise<PageTreeNode[]> {
-  return apiFetch<PageTreeNode[]>(`/api/spaces/${id}/tree`)
+  const nested = await apiFetch<PageTreeNode[]>(`/api/spaces/${id}/tree`)
+  return flattenTree(nested)
 }
 
 // ── Pages ─────────────────────────────────────────────────────────────────────

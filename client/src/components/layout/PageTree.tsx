@@ -187,10 +187,23 @@ function PageTreeItem({
   const isDragging = draggedId === node.id
   const isDragOver = dragOverId === node.id
 
+  const [expanded, setExpanded] = useState(
+    () => localStorage.getItem(`kb:page:${node.id}:expanded`) !== 'false'
+  )
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setExpanded((v) => {
+      const next = !v
+      localStorage.setItem(`kb:page:${node.id}:expanded`, String(next))
+      return next
+    })
+  }
 
   const startRenaming = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -269,22 +282,23 @@ function PageTreeItem({
         className={`group flex items-center transition-opacity ${isDragging ? 'opacity-40' : 'opacity-100'}`}
         style={{ paddingLeft: `${paddingLeft}px` }}
       >
-        {/* Child indicator — purely visual */}
+        {/* Expand/collapse toggle */}
         <span className="w-4 flex-shrink-0 text-gray-600">
           {children.length > 0 && (
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            <button
+              onClick={toggleExpanded}
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+              className="p-0 hover:text-gray-300 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
+              <svg
+                className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           )}
         </span>
 
@@ -374,7 +388,7 @@ function PageTreeItem({
       </div>
 
       {/* Render children recursively */}
-      {children.length > 0 && (
+      {children.length > 0 && expanded && (
         <ul>
           {children.map((child) => (
             <PageTreeItem

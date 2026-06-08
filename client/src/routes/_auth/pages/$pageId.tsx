@@ -37,6 +37,11 @@ function PageView() {
     })
   }, [currentMode])
 
+  // Tracks the latest successfully saved content so the editor re-initializes
+  // correctly after a read→edit mode switch without needing to update page.content
+  // (updating page.content while the editor is mounted resets the cursor position).
+  const savedContentRef = useRef<string | null>(null)
+
   // Keep a stable ref to page for the delete handler
   const pageRef = useRef<Page | null>(null)
   pageRef.current = page
@@ -84,6 +89,7 @@ function PageView() {
     setLoading(true)
     setError(null)
     setMode('read')
+    savedContentRef.current = null
 
     const load = async () => {
       try {
@@ -134,12 +140,13 @@ function PageView() {
         <MarkdownEditor
           key={page.id}
           pageId={page.id}
-          initialContent={page.content}
+          initialContent={savedContentRef.current ?? page.content}
           initialScrollFraction={scrollFractionRef.current}
           scrollFractionRef={scrollFractionRef}
-          onPageUpdate={(updated) =>
+          onPageUpdate={(updated) => {
+            savedContentRef.current = updated.content
             setPage((prev) => (prev ? { ...updated, content: prev.content } : updated))
-          }
+          }}
         />
       ) : (
         <div

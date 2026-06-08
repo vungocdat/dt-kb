@@ -84,6 +84,8 @@ export default function MarkdownEditor({
         })
       }
 
+      view.focus()
+
       // Track scroll position so read mode can restore it when switching back
       if (scrollFractionRef) {
         view.scrollDOM.addEventListener('scroll', () => {

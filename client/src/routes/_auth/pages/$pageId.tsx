@@ -137,7 +137,9 @@ function PageView() {
           initialContent={page.content}
           initialScrollFraction={scrollFractionRef.current}
           scrollFractionRef={scrollFractionRef}
-          onPageUpdate={setPage}
+          onPageUpdate={(updated) =>
+            setPage((prev) => (prev ? { ...updated, content: prev.content } : updated))
+          }
         />
       ) : (
         <div

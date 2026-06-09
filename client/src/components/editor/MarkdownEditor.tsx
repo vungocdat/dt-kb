@@ -28,6 +28,8 @@ export default function MarkdownEditor({
   const setSaveStatus = useUIStore((s) => s.setSaveStatus)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestContent = useRef(initialContent)
+  // Sequence number to discard out-of-order save responses
+  const saveSeq = useRef(0)
 
   // Cancel any pending debounce on unmount
   useEffect(() => {
@@ -41,14 +43,17 @@ export default function MarkdownEditor({
 
   const save = useCallback(
     async (content: string) => {
+      const seq = ++saveSeq.current
       setSaveStatus('saving')
       try {
         const updated = await updatePage(pageId, { content })
+        if (seq !== saveSeq.current) return
         onPageUpdate(updated)
         setSaveStatus('saved')
         // Reset to idle after 2 seconds
         setTimeout(() => setSaveStatus('idle'), 2000)
       } catch {
+        if (seq !== saveSeq.current) return
         setSaveStatus('error')
       }
     },

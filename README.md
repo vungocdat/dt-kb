@@ -47,7 +47,7 @@ Inspired by Docmost and One Markdown
 ### Installation
 
 ```sh
-git clone https://github.com/your-username/dt-kb.git
+git clone https://github.com/vungocdat/dt-kb.git
 cd dt-kb
 npm install
 ```
@@ -66,7 +66,7 @@ Generate a password hash and a session secret:
 npm run setup -- --username admin --password yourpassword
 ```
 
-Paste the printed values into `.env`. Your `.env` should look like:
+Paste the printed values into `.env`. Your `.env` should look like (note the port 3333):
 
 ```env
 KB_USERNAME=admin

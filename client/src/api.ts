@@ -13,7 +13,9 @@ export interface Space {
 export interface Page {
   id: string
   spaceId: string
+  spaceName: string
   parentId: string | null
+  ancestors: { id: string; title: string }[]
   title: string
   content: string
   contentHtml: string

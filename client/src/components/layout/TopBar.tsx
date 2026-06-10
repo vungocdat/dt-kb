@@ -101,9 +101,22 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
         <div className="flex items-center gap-1.5 min-w-0 text-sm">
           {page ? (
             <>
-              <Link to="/" className="text-gray-400 hover:text-gray-200 transition-colors flex-shrink-0">
-                Home
+              <Link to="/" className="text-gray-400 hover:text-gray-200 transition-colors flex-shrink-0 max-w-[8rem] truncate" title={page.spaceName}>
+                {page.spaceName}
               </Link>
+              {page.ancestors.map((a) => (
+                <span key={a.id} className="contents">
+                  <span className="text-gray-600 flex-shrink-0">/</span>
+                  <Link
+                    to="/pages/$pageId"
+                    params={{ pageId: a.id }}
+                    className="text-gray-400 hover:text-gray-200 transition-colors truncate max-w-[8rem] flex-shrink"
+                    title={a.title}
+                  >
+                    {a.title}
+                  </Link>
+                </span>
+              ))}
               <span className="text-gray-600 flex-shrink-0">/</span>
               {editingTitle ? (
                 <input

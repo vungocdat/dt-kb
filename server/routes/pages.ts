@@ -20,6 +20,15 @@ interface PageRow {
   updated_at: number;
 }
 
+interface PageRowFull extends PageRow {
+  space_name: string;
+}
+
+interface AncestorRow {
+  id: string;
+  title: string;
+}
+
 interface RecentRow {
   id: string;
   title: string;
@@ -33,6 +42,24 @@ const stmtGetPage = sqlite.prepare<[string], PageRow>(`
   SELECT id, space_id, parent_id, title, content, content_html,
          sort_order, created_at, updated_at
   FROM pages WHERE id = ?
+`);
+
+const stmtGetPageFull = sqlite.prepare<[string], PageRowFull>(`
+  SELECT p.id, p.space_id, p.parent_id, p.title, p.content, p.content_html,
+         p.sort_order, p.created_at, p.updated_at, s.name AS space_name
+  FROM pages p JOIN spaces s ON p.space_id = s.id
+  WHERE p.id = ?
+`);
+
+const stmtGetAncestors = sqlite.prepare<[string], AncestorRow>(`
+  WITH RECURSIVE anc(id, title, parent_id, lvl) AS (
+    SELECT p.id, p.title, p.parent_id, 0
+    FROM pages p WHERE p.id = (SELECT parent_id FROM pages WHERE id = ?)
+    UNION ALL
+    SELECT p.id, p.title, p.parent_id, a.lvl + 1
+    FROM pages p JOIN anc a ON p.id = a.parent_id
+  )
+  SELECT id, title FROM anc ORDER BY lvl DESC
 `);
 
 const stmtGetSpace = sqlite.prepare<[string], { id: string }>(
@@ -134,11 +161,17 @@ pagesRouter.get('/recent', (c) => {
   );
 });
 
-// GET /:id — full page
+// GET /:id — full page with space name and ancestor chain
 pagesRouter.get('/:id', (c) => {
-  const row = stmtGetPage.get(c.req.param('id'));
+  const id = c.req.param('id');
+  const row = stmtGetPageFull.get(id);
   if (!row) throw new HTTPException(404, { message: 'Page not found' });
-  return c.json(toPage(row));
+  const ancestors = stmtGetAncestors.all(id);
+  return c.json({
+    ...toPage(row),
+    spaceName: row.space_name,
+    ancestors: ancestors.map((a) => ({ id: a.id, title: a.title })),
+  });
 });
 
 // POST / — create a page

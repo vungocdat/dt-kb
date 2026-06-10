@@ -7,7 +7,7 @@ interface TableOfContentsProps {
 }
 
 export function TableOfContents({ html, scrollContainerRef }: TableOfContentsProps) {
-  const headings: TocHeading[] = parseHeadings(html)
+  const headings: TocHeading[] = parseHeadings(html).filter((h) => h.text)
   const [activeId, setActiveId] = useState<string>('')
   const observerRef = useRef<IntersectionObserver | null>(null)
 

@@ -4,6 +4,7 @@ import { getPage, deletePage, type Page } from '../../../api'
 import { useUIStore } from '../../../store'
 import MarkdownEditor from '../../../components/editor/MarkdownEditor'
 import { MarkdownRenderer } from '../../../components/editor/MarkdownRenderer'
+import { TableOfContents } from '../../../components/layout/TableOfContents'
 import { Skeleton } from '../../../components/ui/Skeleton'
 
 export const Route = createFileRoute('/_auth/pages/$pageId')({
@@ -160,7 +161,12 @@ function PageView() {
             scrollFractionRef.current = max > 0 ? el.scrollTop / max : 0
           }}
         >
-          <MarkdownRenderer html={page.contentHtml} />
+          <div className="flex items-start">
+            <div className="flex-1 min-w-0">
+              <MarkdownRenderer html={page.contentHtml} />
+            </div>
+            <TableOfContents html={page.contentHtml} scrollContainerRef={readDivRef} />
+          </div>
         </div>
       )}
     </div>

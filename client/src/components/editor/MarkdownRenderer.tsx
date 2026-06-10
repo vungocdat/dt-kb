@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { parseHeadings } from './tocUtils'
 
 interface MarkdownRendererProps {
   html: string
@@ -10,6 +11,13 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
   useEffect(() => {
     const container = ref.current
     if (!container) return
+
+    // Stamp IDs onto headings so TOC anchor links work
+    const tocHeadings = parseHeadings(container.innerHTML)
+    const headingEls = container.querySelectorAll('h1,h2,h3,h4,h5,h6')
+    headingEls.forEach((el, i) => {
+      if (tocHeadings[i]) el.id = tocHeadings[i].id
+    })
 
     container.querySelectorAll('pre').forEach((pre) => {
       if (pre.querySelector('.kb-copy-btn')) return

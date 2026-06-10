@@ -37,9 +37,9 @@ function PageView() {
     })
   }, [currentMode])
 
-  // Tracks the latest successfully saved content so the editor re-initializes
-  // correctly after a read→edit mode switch without needing to update page.content
-  // (updating page.content while the editor is mounted resets the cursor position).
+  // Latest successfully saved content, set synchronously on save so a
+  // read→edit switch re-initializes the editor with it even if the setPage
+  // render hasn't committed yet.
   const savedContentRef = useRef<string | null>(null)
 
   // Keep a stable ref to page for the delete handler
@@ -145,7 +145,9 @@ function PageView() {
           scrollFractionRef={scrollFractionRef}
           onPageUpdate={(updated) => {
             savedContentRef.current = updated.content
-            setPage((prev) => (prev ? { ...updated, content: prev.content } : updated))
+            // Merge into prev (never replace): fields the save response may
+            // lack (ancestors, spaceName) must survive, or TopBar crashes.
+            setPage((prev) => (prev ? { ...prev, ...updated } : updated))
           }}
         />
       ) : (

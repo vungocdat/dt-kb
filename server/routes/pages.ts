@@ -230,8 +230,15 @@ pagesRouter.patch('/:id', zValidator('json', updateSchema), async (c) => {
 
   sqlite.prepare(`UPDATE pages SET ${sets.join(', ')} WHERE id = @id`).run(params);
 
-  const row = stmtGetPage.get(id);
-  return c.json(toPage(row!));
+  // Same shape as GET /:id — the client swaps this into page state, so it must
+  // carry spaceName and ancestors or the breadcrumb breaks.
+  const row = stmtGetPageFull.get(id);
+  const ancestors = stmtGetAncestors.all(id);
+  return c.json({
+    ...toPage(row!),
+    spaceName: row!.space_name,
+    ancestors: ancestors.map((a) => ({ id: a.id, title: a.title })),
+  });
 });
 
 // DELETE /:id — re-parent children up, then delete (transactional)

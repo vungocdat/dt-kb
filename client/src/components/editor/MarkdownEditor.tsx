@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -31,12 +31,21 @@ export default function MarkdownEditor({
   // Sequence number to discard out-of-order save responses
   const saveSeq = useRef(0)
 
-  // Cancel any pending debounce on unmount
+  // The document is frozen at mount: CodeMirror's `value` prop is controlled,
+  // and pushing a just-saved (possibly stale vs. what the user typed since)
+  // value back in would replace the doc and jump the cursor to the top.
+  // Fresh content arrives via remount (keyed by page id / edit-mode entry).
+  const [initialDoc] = useState(initialContent)
+
+  // Flush any pending debounced save on unmount so the last <800ms of typing
+  // isn't lost when switching back to read mode or navigating away.
+  // (saveRef keeps the unmount-only effect from re-running as `save` changes.)
   useEffect(() => {
     return () => {
       if (debounceTimer.current !== null) {
         clearTimeout(debounceTimer.current)
         debounceTimer.current = null
+        void saveRef.current(latestContent.current)
       }
     }
   }, [])
@@ -59,6 +68,9 @@ export default function MarkdownEditor({
     },
     [pageId, setSaveStatus, onPageUpdate],
   )
+
+  const saveRef = useRef(save)
+  saveRef.current = save
 
   const handleChange = useCallback(
     (value: string) => {
@@ -112,7 +124,7 @@ export default function MarkdownEditor({
     // The inner style height:100% is required for CodeMirror's scroll to work.
     <div className="flex-1 min-h-0" style={{ overflow: 'hidden' }}>
       <CodeMirror
-        value={initialContent}
+        value={initialDoc}
         height="100%"
         theme={oneDark}
         extensions={extensions}

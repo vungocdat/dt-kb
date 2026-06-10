@@ -72,24 +72,34 @@ export default function PageTree({
     const dragged = tree.find((n) => n.id === draggedId)
     const target = tree.find((n) => n.id === targetId)
 
-    // Only allow reordering within the same parent (siblings)
-    if (!dragged || !target || dragged.parentId !== target.parentId) {
+    if (!dragged || !target) {
       setDraggedId(null)
       setDragOverId(null)
       return
     }
 
+    // Prevent moving a node into its own descendant subtree
+    let cur: PageTreeNode | undefined = tree.find((n) => n.id === target.parentId)
+    while (cur) {
+      if (cur.id === dragged.id) {
+        setDraggedId(null)
+        setDragOverId(null)
+        return
+      }
+      cur = cur.parentId ? tree.find((n) => n.id === cur!.parentId) : undefined
+    }
+
+    // Insert dragged before the target among target's siblings (cross-parent allowed)
+    const newParentId = target.parentId
     const siblings = tree
-      .filter((n) => n.parentId === dragged.parentId)
+      .filter((n) => n.parentId === newParentId && n.id !== draggedId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
 
-    const withoutDragged = siblings.filter((n) => n.id !== draggedId)
-    const targetIndex = withoutDragged.findIndex((n) => n.id === targetId)
-    // Insert dragged before the target
-    withoutDragged.splice(targetIndex, 0, dragged)
-    const reindexed = withoutDragged.map((n, i) => ({ ...n, sortOrder: i }))
+    const targetIndex = siblings.findIndex((n) => n.id === targetId)
+    siblings.splice(targetIndex, 0, { ...dragged, parentId: newParentId })
+    const reindexed = siblings.map((n, i) => ({ ...n, sortOrder: i }))
 
-    // Build the updated flat tree with new sortOrders applied
+    // Build the updated flat tree with new parentId and sortOrders applied
     const updatedTree = tree.map((n) => {
       const reindexedNode = reindexed.find((r) => r.id === n.id)
       return reindexedNode ?? n
@@ -100,7 +110,7 @@ export default function PageTree({
     setDraggedId(null)
     setDragOverId(null)
 
-    // Persist each changed node's sortOrder to the server
+    // Persist all affected nodes to the server
     try {
       await Promise.all(
         reindexed.map((n) => movePage(n.id, { parentId: n.parentId, sortOrder: n.sortOrder })),

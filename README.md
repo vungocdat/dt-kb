@@ -15,6 +15,7 @@ Inspired by Docmost and One Markdown
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
 - **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`; code blocks have a one-click copy-to-clipboard button
+- **Table of contents** — sticky right sidebar in Read mode listing all headings with active-section highlighting and click-to-scroll; auto-hidden when fewer than 2 headings
 - **Keyboard shortcuts** — `Ctrl/Cmd+E` toggles Edit/Read mode, `Ctrl/Cmd+K` opens search
 - **Export** — download any page as a `.md` file, or export a whole space as a `.zip` archive (includes all pages and hierarchy metadata for re-import)
 - **Import** — import a `.md` file as a new page into any space, or restore a space from a previously exported `.zip`

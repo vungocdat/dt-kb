@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPage, deleteSpace, exportSpace, getSpaceTree, movePage, updateSpace, type Space, type PageTreeNode } from '../../api'
 import PageTree from './PageTree'
 import { dragState } from './dragState'
+import EmojiPicker from '../ui/EmojiPicker'
 
 interface SpaceSectionProps {
   space: Space
@@ -28,6 +29,7 @@ export default function SpaceSection({
   const [renameValue, setRenameValue] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [pickerAnchor, setPickerAnchor] = useState<{ left: number; bottom: number } | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const importPageInputRef = useRef<HTMLInputElement>(null)
   const deletingRef = useRef(false)
@@ -77,6 +79,27 @@ export default function SpaceSection({
   const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') void commitRename()
     if (e.key === 'Escape') setRenaming(false)
+  }
+
+  const toggleIconPicker = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (pickerAnchor) {
+      setPickerAnchor(null)
+      return
+    }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setPickerAnchor({ left: rect.left, bottom: rect.bottom })
+  }
+
+  const handleIconSelect = async (icon: string) => {
+    setPickerAnchor(null)
+    if (icon === space.icon) return
+    try {
+      const updated = await updateSpace(space.id, { icon })
+      onSpaceUpdated?.(updated)
+    } catch {
+      // revert silently — space.icon prop is unchanged
+    }
   }
 
   const handleExportSpace = async () => {
@@ -216,7 +239,15 @@ export default function SpaceSection({
             d="M9 5l7 7-7 7"
           />
         </svg>
-        <span className="text-sm flex-shrink-0">{space.icon || '📁'}</span>
+        <button
+          onClick={toggleIconPicker}
+          onMouseDown={(e) => e.stopPropagation()}
+          aria-label={`Change icon for ${space.name}`}
+          title="Click to change icon"
+          className="text-sm flex-shrink-0 rounded hover:bg-gray-700 px-0.5 transition-colors"
+        >
+          {space.icon || '📁'}
+        </button>
         {renaming ? (
           <input
             ref={renameInputRef}
@@ -336,6 +367,14 @@ export default function SpaceSection({
           </div>
         )}
       </div>
+
+      {pickerAnchor && (
+        <EmojiPicker
+          anchor={pickerAnchor}
+          onSelect={(emoji) => void handleIconSelect(emoji)}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
 
       {expanded && (
         <PageTree

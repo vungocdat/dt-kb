@@ -8,7 +8,7 @@ Inspired by Docmost and One Markdown
 
 ## Features
 
-- **Spaces** — top-level containers to organise pages by topic or project; drag to reorder
+- **Spaces** — top-level containers to organise pages by topic or project; drag to reorder, click a space's icon to pick a custom emoji
 - **Nested pages** — tree structure with unlimited depth; drag to reorder siblings or move across spaces
 - **Dual view per page** — Read mode (rendered HTML with syntax highlighting) and Edit mode (CodeMirror raw Markdown editor)
 - **Auto-save** — edits are saved 800 ms after you stop typing

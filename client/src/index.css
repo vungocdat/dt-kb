@@ -1,14 +1,66 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Prose overrides for dark mode rendered markdown */
+/* ──────────────────────────────────────────────────────────────
+   Theming: map Tailwind's gray utilities onto runtime CSS variables
+   so the whole UI flips between dark and light. The design uses the
+   gray scale consistently (high number = dark surface, low number =
+   light text in dark mode), so the light theme simply inverts the
+   scale — tuned toward Docmost's soft Mantine neutrals.
+   ────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-gray-50: var(--kb-gray-50);
+  --color-gray-100: var(--kb-gray-100);
+  --color-gray-200: var(--kb-gray-200);
+  --color-gray-300: var(--kb-gray-300);
+  --color-gray-400: var(--kb-gray-400);
+  --color-gray-500: var(--kb-gray-500);
+  --color-gray-600: var(--kb-gray-600);
+  --color-gray-700: var(--kb-gray-700);
+  --color-gray-800: var(--kb-gray-800);
+  --color-gray-900: var(--kb-gray-900);
+  --color-gray-950: var(--kb-gray-950);
+}
+
+/* Dark theme (default) — standard Tailwind gray scale */
+:root,
+.dark {
+  --kb-gray-50: #f9fafb;
+  --kb-gray-100: #f3f4f6;
+  --kb-gray-200: #e5e7eb;
+  --kb-gray-300: #d1d5db;
+  --kb-gray-400: #9ca3af;
+  --kb-gray-500: #6b7280;
+  --kb-gray-600: #4b5563;
+  --kb-gray-700: #374151;
+  --kb-gray-800: #1f2937;
+  --kb-gray-900: #111827;
+  --kb-gray-950: #030712;
+}
+
+/* Light theme — inverted scale toward Docmost's neutral palette */
+.light {
+  --kb-gray-50: #0d0f12;
+  --kb-gray-100: #1a1b1e; /* primary text */
+  --kb-gray-200: #2c2e33;
+  --kb-gray-300: #495057; /* secondary text */
+  --kb-gray-400: #868e96; /* muted text */
+  --kb-gray-500: #adb5bd;
+  --kb-gray-600: #ced4da; /* subtle separators */
+  --kb-gray-700: #e9ecef; /* hover, inline code, inputs */
+  --kb-gray-800: #f1f3f5; /* surfaces / sidebar / cards */
+  --kb-gray-900: #f8f9fa; /* app chrome */
+  --kb-gray-950: #ffffff; /* app background */
+}
+
+/* Prose overrides for rendered markdown */
 .prose pre {
   padding: 0;
   background: transparent;
 }
 
 .prose code:not(pre code) {
-  background-color: rgb(55 65 81); /* gray-700 */
+  background-color: var(--color-gray-700);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;

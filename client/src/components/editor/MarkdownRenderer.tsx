@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { parseHeadings } from './tocUtils'
+import { useUIStore } from '../../store'
 
 interface MarkdownRendererProps {
   html: string
@@ -7,6 +8,7 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ html }: MarkdownRendererProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const theme = useUIStore((s) => s.theme)
 
   useEffect(() => {
     const container = ref.current
@@ -74,7 +76,7 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
   return (
     <div
       ref={ref}
-      className="prose prose-invert max-w-none px-8 py-6"
+      className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none px-8 py-6`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

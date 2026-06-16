@@ -1,44 +1,27 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { getSpaces, getSpaceTree, type Space, type PageTreeNode } from '../../api'
+import { getSpaces, getRecentPages, type Space, type RecentPage } from '../../api'
 import SpaceCard from '../../components/dashboard/SpaceCard'
-import SpaceContents from '../../components/dashboard/SpaceContents'
+import RecentPages from '../../components/dashboard/RecentPages'
 import { Skeleton } from '../../components/ui/Skeleton'
 
 export const Route = createFileRoute('/_auth/')({
   component: Dashboard,
 })
 
-function flattenTree(nodes: PageTreeNode[]): PageTreeNode[] {
-  const result: PageTreeNode[] = []
-  function walk(list: PageTreeNode[]) {
-    for (const n of list) {
-      result.push(n)
-      if (n.children.length > 0) walk(n.children)
-    }
-  }
-  walk(nodes)
-  return result
-}
-
 function Dashboard() {
   const [spaces, setSpaces] = useState<Space[]>([])
-  const [trees, setTrees] = useState<Record<string, PageTreeNode[]>>({})
+  const [recent, setRecent] = useState<RecentPage[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const s = await getSpaces()
+        const [s, r] = await Promise.all([getSpaces(), getRecentPages()])
         if (cancelled) return
         setSpaces(s)
-        const treeEntries = await Promise.all(
-          s.map(async (sp) => [sp.id, flattenTree(await getSpaceTree(sp.id))] as const),
-        )
-        if (!cancelled) {
-          setTrees(Object.fromEntries(treeEntries))
-        }
+        setRecent(r)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -75,19 +58,19 @@ function Dashboard() {
         )}
       </section>
 
-      {/* Contents */}
+      {/* Recently edited */}
       <section>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-          Contents
+          Recently Edited
         </h2>
         {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-11 rounded-md" />
             ))}
           </div>
         ) : (
-          <SpaceContents spaces={spaces} trees={trees} />
+          <RecentPages pages={recent} />
         )}
       </section>
     </div>

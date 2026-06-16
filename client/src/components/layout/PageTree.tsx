@@ -30,6 +30,8 @@ export default function PageTree({
 
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  // 'before' = drop as sibling above the target; 'inside' = nest as a child of the target
+  const [dropMode, setDropMode] = useState<'before' | 'inside'>('before')
 
   useEffect(() => {
     if (loadedRef.current) return
@@ -54,18 +56,50 @@ export default function PageTree({
   const handleDragEnd = () => {
     setDraggedId(null)
     setDragOverId(null)
+    setDropMode('before')
     dragState.pageId = null
     dragState.spaceId = null
   }
 
-  const handleDragOver = (id: string) => {
+  const handleDragOver = (id: string, mode: 'before' | 'inside') => {
     setDragOverId(id)
+    setDropMode(mode)
   }
 
-  const handleDrop = async (targetId: string) => {
+  const clearDrag = () => {
+    setDraggedId(null)
+    setDragOverId(null)
+    setDropMode('before')
+  }
+
+  // True when `ancestorId` is `nodeId` or one of its ancestors — used to block
+  // dropping a page into its own subtree.
+  const isAncestorOrSelf = (ancestorId: string, nodeId: string | null): boolean => {
+    let cur: PageTreeNode | undefined = nodeId ? tree.find((n) => n.id === nodeId) : undefined
+    while (cur) {
+      if (cur.id === ancestorId) return true
+      cur = cur.parentId ? tree.find((n) => n.id === cur!.parentId) : undefined
+    }
+    return false
+  }
+
+  const persistMoves = async (moves: { id: string; parentId: string | null; sortOrder: number }[]) => {
+    try {
+      await Promise.all(moves.map((m) => movePage(m.id, { parentId: m.parentId, sortOrder: m.sortOrder })))
+    } catch {
+      // Rollback: reload the tree from the server
+      try {
+        const fresh = await getSpaceTree(spaceId)
+        onTreeLoaded(fresh)
+      } catch {
+        // silently ignore secondary failure
+      }
+    }
+  }
+
+  const handleDrop = async (targetId: string, mode: 'before' | 'inside') => {
     if (!draggedId || draggedId === targetId) {
-      setDraggedId(null)
-      setDragOverId(null)
+      clearDrag()
       return
     }
 
@@ -73,23 +107,42 @@ export default function PageTree({
     const target = tree.find((n) => n.id === targetId)
 
     if (!dragged || !target) {
-      setDraggedId(null)
-      setDragOverId(null)
+      clearDrag()
       return
     }
 
-    // Prevent moving a node into its own descendant subtree
-    let cur: PageTreeNode | undefined = tree.find((n) => n.id === target.parentId)
-    while (cur) {
-      if (cur.id === dragged.id) {
-        setDraggedId(null)
-        setDragOverId(null)
+    if (mode === 'inside') {
+      // Nest the dragged page as the last child of the target. Block dropping
+      // into the dragged node's own subtree (target is dragged or a descendant).
+      if (isAncestorOrSelf(dragged.id, target.id)) {
+        clearDrag()
         return
       }
-      cur = cur.parentId ? tree.find((n) => n.id === cur!.parentId) : undefined
+
+      const siblings = tree.filter((n) => n.parentId === targetId && n.id !== draggedId)
+      const newSortOrder = siblings.length
+
+      const updatedTree = tree.map((n) =>
+        n.id === draggedId ? { ...n, parentId: targetId, sortOrder: newSortOrder } : n,
+      )
+
+      // Reveal the new child by expanding the target (also persists for next mount)
+      localStorage.setItem(`kb:page:${targetId}:expanded`, 'true')
+
+      onTreeLoaded(updatedTree)
+      clearDrag()
+
+      await persistMoves([{ id: draggedId, parentId: targetId, sortOrder: newSortOrder }])
+      return
     }
 
-    // Insert dragged before the target among target's siblings (cross-parent allowed)
+    // mode === 'before': insert dragged before the target among target's siblings.
+    // Block moving a node into its own descendant subtree.
+    if (isAncestorOrSelf(dragged.id, target.parentId)) {
+      clearDrag()
+      return
+    }
+
     const newParentId = target.parentId
     const siblings = tree
       .filter((n) => n.parentId === newParentId && n.id !== draggedId)
@@ -107,23 +160,10 @@ export default function PageTree({
 
     // Optimistic update
     onTreeLoaded(updatedTree)
-    setDraggedId(null)
-    setDragOverId(null)
+    clearDrag()
 
     // Persist all affected nodes to the server
-    try {
-      await Promise.all(
-        reindexed.map((n) => movePage(n.id, { parentId: n.parentId, sortOrder: n.sortOrder })),
-      )
-    } catch {
-      // Rollback: reload the tree from the server
-      try {
-        const fresh = await getSpaceTree(spaceId)
-        onTreeLoaded(fresh)
-      } catch {
-        // silently ignore secondary failure
-      }
-    }
+    await persistMoves(reindexed.map((n) => ({ id: n.id, parentId: n.parentId, sortOrder: n.sortOrder })))
   }
 
   const rootNodes = tree
@@ -147,6 +187,7 @@ export default function PageTree({
           onSubpageCreated={onSubpageCreated}
           draggedId={draggedId}
           dragOverId={dragOverId}
+          dropMode={dropMode}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragOver={handleDragOver}
@@ -168,10 +209,11 @@ interface PageTreeItemProps {
   onSubpageCreated?: () => Promise<void>
   draggedId: string | null
   dragOverId: string | null
+  dropMode: 'before' | 'inside'
   onDragStart: (id: string) => void
   onDragEnd: () => void
-  onDragOver: (id: string) => void
-  onDrop: (targetId: string) => Promise<void>
+  onDragOver: (id: string, mode: 'before' | 'inside') => void
+  onDrop: (targetId: string, mode: 'before' | 'inside') => Promise<void>
 }
 
 function PageTreeItem({
@@ -185,6 +227,7 @@ function PageTreeItem({
   onSubpageCreated,
   draggedId,
   dragOverId,
+  dropMode,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -196,6 +239,8 @@ function PageTreeItem({
   const isActive = currentPageId === node.id
   const isDragging = draggedId === node.id
   const isDragOver = dragOverId === node.id
+  const isNestTarget = isDragOver && dropMode === 'inside'
+  const isBeforeTarget = isDragOver && dropMode === 'before'
 
   const [expanded, setExpanded] = useState(
     () => localStorage.getItem(`kb:page:${node.id}:expanded`) !== 'false'
@@ -204,6 +249,16 @@ function PageTreeItem({
   const [renameValue, setRenameValue] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  // Drop in the lower half of the row nests the page as a child; the upper half
+  // inserts it as a sibling above the target.
+  const getDropMode = (e: React.DragEvent): 'before' | 'inside' => {
+    const el = rowRef.current
+    if (!el) return 'before'
+    const rect = el.getBoundingClientRect()
+    return e.clientY - rect.top > rect.height / 2 ? 'inside' : 'before'
+  }
 
   const toggleExpanded = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -267,7 +322,7 @@ function PageTreeItem({
 
   return (
     <li
-      className={isDragOver ? 'border-t-2 border-blue-500' : ''}
+      className={isBeforeTarget ? 'border-t-2 border-blue-500' : ''}
       draggable
       onDragStart={(e) => {
         e.stopPropagation()
@@ -280,16 +335,17 @@ function PageTreeItem({
       onDragOver={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        onDragOver(node.id)
+        onDragOver(node.id, getDropMode(e))
       }}
       onDrop={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        void onDrop(node.id)
+        void onDrop(node.id, getDropMode(e))
       }}
     >
       <div
-        className={`group flex items-center transition-opacity ${isDragging ? 'opacity-40' : 'opacity-100'}`}
+        ref={rowRef}
+        className={`group flex items-center rounded-sm transition-opacity ${isDragging ? 'opacity-40' : 'opacity-100'} ${isNestTarget ? 'ring-1 ring-inset ring-blue-500 bg-blue-500/10' : ''}`}
         style={{ paddingLeft: `${paddingLeft}px` }}
       >
         {/* Expand/collapse toggle */}
@@ -413,6 +469,7 @@ function PageTreeItem({
               onSubpageCreated={onSubpageCreated}
               draggedId={draggedId}
               dragOverId={dragOverId}
+              dropMode={dropMode}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDragOver={onDragOver}

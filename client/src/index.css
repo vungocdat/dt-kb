@@ -2,11 +2,12 @@
 @plugin "@tailwindcss/typography";
 
 /* ──────────────────────────────────────────────────────────────
-   Theming: map Tailwind's gray utilities onto runtime CSS variables
-   so the whole UI flips between dark and light. The design uses the
-   gray scale consistently (high number = dark surface, low number =
-   light text in dark mode), so the light theme simply inverts the
-   scale — tuned toward Docmost's soft Mantine neutrals.
+   Theming: map Tailwind's gray utilities onto runtime CSS variables.
+   Single dark theme tuned toward Docmost's soft Mantine neutrals —
+   the goal is a low-contrast, easy-on-the-eyes dark UI rather than
+   the near-black / near-white extremes of the default gray scale.
+   The scale is used consistently across the app: high number = dark
+   surface, low number = light text.
    ────────────────────────────────────────────────────────────── */
 @theme inline {
   --color-gray-50: var(--kb-gray-50);
@@ -22,35 +23,22 @@
   --color-gray-950: var(--kb-gray-950);
 }
 
-/* Dark theme (default) — standard Tailwind gray scale */
+/* Soft dark theme — Mantine/Docmost-inspired neutrals.
+   Surfaces sit around #1a–#2e (never near-black) and text tops out
+   around #cdced2 (never pure white) to keep contrast gentle. */
 :root,
 .dark {
-  --kb-gray-50: #f9fafb;
-  --kb-gray-100: #f3f4f6;
-  --kb-gray-200: #e5e7eb;
-  --kb-gray-300: #d1d5db;
-  --kb-gray-400: #9ca3af;
-  --kb-gray-500: #6b7280;
-  --kb-gray-600: #4b5563;
-  --kb-gray-700: #374151;
-  --kb-gray-800: #1f2937;
-  --kb-gray-900: #111827;
-  --kb-gray-950: #030712;
-}
-
-/* Light theme — inverted scale toward Docmost's neutral palette */
-.light {
-  --kb-gray-50: #0d0f12;
-  --kb-gray-100: #1a1b1e; /* primary text */
-  --kb-gray-200: #2c2e33;
-  --kb-gray-300: #495057; /* secondary text */
-  --kb-gray-400: #868e96; /* muted text */
-  --kb-gray-500: #adb5bd;
-  --kb-gray-600: #ced4da; /* subtle separators */
-  --kb-gray-700: #e9ecef; /* hover, inline code, inputs */
-  --kb-gray-800: #f1f3f5; /* surfaces / sidebar / cards */
-  --kb-gray-900: #f8f9fa; /* app chrome */
-  --kb-gray-950: #ffffff; /* app background */
+  --kb-gray-50: #ebebed; /* brightest text / hover */
+  --kb-gray-100: #cdced2; /* primary text */
+  --kb-gray-200: #c1c2c5; /* headings / strong text */
+  --kb-gray-300: #a6a7ab; /* secondary text / input text */
+  --kb-gray-400: #909296; /* muted text */
+  --kb-gray-500: #6e7178; /* placeholder text */
+  --kb-gray-600: #4a4d54; /* separators / borders */
+  --kb-gray-700: #2e2f34; /* hover, inline code, input borders */
+  --kb-gray-800: #25262b; /* surfaces / sidebar / cards / inputs */
+  --kb-gray-900: #1e1f22; /* app chrome (topbar) */
+  --kb-gray-950: #1a1b1e; /* app background */
 }
 
 /* Prose overrides for rendered markdown */

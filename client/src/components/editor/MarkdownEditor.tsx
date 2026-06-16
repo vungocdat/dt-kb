@@ -26,7 +26,6 @@ export default function MarkdownEditor({
   onPageUpdate,
 }: MarkdownEditorProps) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus)
-  const theme = useUIStore((s) => s.theme)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestContent = useRef(initialContent)
   // Sequence number to discard out-of-order save responses
@@ -127,7 +126,7 @@ export default function MarkdownEditor({
       <CodeMirror
         value={initialDoc}
         height="100%"
-        theme={theme === 'dark' ? oneDark : 'light'}
+        theme={oneDark}
         extensions={extensions}
         onChange={handleChange}
         onCreateEditor={onCreateEditor}

@@ -21,7 +21,7 @@ Inspired by Docmost and One Markdown
 - **Import** — import a `.md` file as a new page into any space, or restore a space from a previously exported `.zip`
 - **Login-protected** — single credential set in `.env`, no users table, session cookies via `iron-session`
 - **Password change** — change your password from the settings page without restarting the server
-- **Dark mode** — hardcoded, no toggle
+- **Dark mode** — single soft, low-contrast dark theme (Docmost/Mantine-inspired neutrals); no light mode or toggle
 
 ## Stack
 

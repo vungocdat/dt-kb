@@ -4,24 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
     <title>DT Knowledge Base</title>
-    <script>
-      // Apply saved theme before first paint to avoid a flash of the wrong theme.
-      (function () {
-        var theme = localStorage.getItem('kb:theme') === 'light' ? 'light' : 'dark'
-        var root = document.documentElement
-        root.classList.remove('dark', 'light')
-        root.classList.add(theme)
-        var link = document.getElementById('hljs-theme')
-        if (link) {
-          link.href =
-            'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-' +
-            (theme === 'light' ? 'light' : 'dark') +
-            '.min.css'
-        }
-      })()
-    </script>
   </head>
   <body>
     <div id="root"></div>

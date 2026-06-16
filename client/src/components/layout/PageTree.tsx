@@ -11,6 +11,9 @@ interface PageTreeProps {
   onTreeLoaded: (tree: PageTreeNode[]) => void
   onPageCreated?: () => void
   onSubpageCreated?: () => Promise<void>
+  autoRenameId?: string | null
+  onAutoRenameDone?: () => void
+  onFocusNewPage?: (pageId: string) => void
 }
 
 export default function PageTree({
@@ -21,6 +24,9 @@ export default function PageTree({
   onTreeLoaded,
   onPageCreated,
   onSubpageCreated,
+  autoRenameId,
+  onAutoRenameDone,
+  onFocusNewPage,
 }: PageTreeProps) {
   const params = useParams({ strict: false })
   // pageId param is present on /pages/$pageId route
@@ -185,6 +191,9 @@ export default function PageTree({
           onTreeLoaded={onTreeLoaded}
           onPageCreated={onPageCreated}
           onSubpageCreated={onSubpageCreated}
+          autoRenameId={autoRenameId}
+          onAutoRenameDone={onAutoRenameDone}
+          onFocusNewPage={onFocusNewPage}
           draggedId={draggedId}
           dragOverId={dragOverId}
           dropMode={dropMode}
@@ -207,6 +216,9 @@ interface PageTreeItemProps {
   onTreeLoaded: (tree: PageTreeNode[]) => void
   onPageCreated?: () => void
   onSubpageCreated?: () => Promise<void>
+  autoRenameId?: string | null
+  onAutoRenameDone?: () => void
+  onFocusNewPage?: (pageId: string) => void
   draggedId: string | null
   dragOverId: string | null
   dropMode: 'before' | 'inside'
@@ -225,6 +237,9 @@ function PageTreeItem({
   onTreeLoaded,
   onPageCreated,
   onSubpageCreated,
+  autoRenameId,
+  onAutoRenameDone,
+  onFocusNewPage,
   draggedId,
   dragOverId,
   dropMode,
@@ -277,6 +292,16 @@ function PageTreeItem({
     setTimeout(() => renameInputRef.current?.select(), 0)
   }
 
+  // A freshly created page opens straight into inline rename. The signal is
+  // cleared immediately so it fires once and doesn't re-trigger on re-renders.
+  useEffect(() => {
+    if (autoRenameId !== node.id) return
+    setRenameValue(node.title || '')
+    setRenaming(true)
+    setTimeout(() => renameInputRef.current?.select(), 0)
+    onAutoRenameDone?.()
+  }, [autoRenameId, node.id, node.title, onAutoRenameDone])
+
   const commitRename = async () => {
     const title = renameValue.trim() || 'Untitled'
     setRenaming(false)
@@ -310,8 +335,11 @@ function PageTreeItem({
     e.stopPropagation()
     e.preventDefault()
     try {
-      await createPage({ spaceId, title: 'Untitled', parentId: node.id })
+      const child = await createPage({ spaceId, title: 'Untitled', parentId: node.id })
+      // Expand this row so the new child is visible after the tree remounts.
+      localStorage.setItem(`kb:page:${node.id}:expanded`, 'true')
       await onSubpageCreated?.()
+      onFocusNewPage?.(child.id)
     } catch {
       // silently ignore
     }
@@ -467,6 +495,9 @@ function PageTreeItem({
               onTreeLoaded={onTreeLoaded}
               onPageCreated={onPageCreated}
               onSubpageCreated={onSubpageCreated}
+              autoRenameId={autoRenameId}
+              onAutoRenameDone={onAutoRenameDone}
+              onFocusNewPage={onFocusNewPage}
               draggedId={draggedId}
               dragOverId={dragOverId}
               dropMode={dropMode}

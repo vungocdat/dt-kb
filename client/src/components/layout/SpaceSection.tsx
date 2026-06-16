@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { createPage, deleteSpace, exportSpace, getSpaceTree, movePage, updateSpace, type Space, type PageTreeNode } from '../../api'
 import PageTree from './PageTree'
 import { dragState } from './dragState'
@@ -19,10 +20,13 @@ export default function SpaceSection({
   onSpaceUpdated,
   onSpaceDeleted,
 }: SpaceSectionProps) {
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState(
     () => localStorage.getItem(`kb:space:${space.id}:expanded`) === 'true'
   )
   const [tree, setTree] = useState<PageTreeNode[]>([])
+  // Page id that should auto-open into inline rename right after creation.
+  const [autoRenameId, setAutoRenameId] = useState<string | null>(null)
   const [treeVersion, setTreeVersion] = useState(0)
   const [hovering, setHovering] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -132,13 +136,23 @@ export default function SpaceSection({
     }
   }
 
+  // Open the new page (highlights it in the sidebar via the route param) and
+  // flag it so the matching tree row opens straight into inline rename.
+  const focusNewPage = (pageId: string) => {
+    setAutoRenameId(pageId)
+    void navigate({ to: '/pages/$pageId', params: { pageId } })
+  }
+
   const handleAddPage = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      await createPage({ spaceId: space.id, title: 'Untitled', parentId: null })
+      const page = await createPage({ spaceId: space.id, title: 'Untitled', parentId: null })
+      setExpanded(true)
+      localStorage.setItem(`kb:space:${space.id}:expanded`, 'true')
       await refreshTree()
       setTreeVersion((v) => v + 1)
       onPageCreated()
+      focusNewPage(page.id)
     } catch {
       // ignore
     }
@@ -390,6 +404,9 @@ export default function SpaceSection({
             setTreeVersion((v) => v + 1)
             onPageCreated()
           }}
+          autoRenameId={autoRenameId}
+          onAutoRenameDone={() => setAutoRenameId(null)}
+          onFocusNewPage={focusNewPage}
         />
       )}
     </div>

@@ -38,7 +38,7 @@
   --kb-gray-700: #2e2f34; /* hover, inline code, input borders */
   --kb-gray-800: #25262b; /* surfaces / sidebar / cards / inputs */
   --kb-gray-900: #1e1f22; /* app chrome (topbar) */
-  --kb-gray-950: #1a1b1e; /* app background */
+  --kb-gray-950: #181818; /* app background */
 }
 
 /* Prose overrides for rendered markdown */

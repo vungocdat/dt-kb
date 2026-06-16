@@ -55,19 +55,27 @@
 }
 
 .prose :where(h1) {
-  color: #ffffff;
+  color: #f2c97d; /* amber — page title */
 }
 
 .prose :where(h2) {
-  color: #c3d4f5; /* soft blue — top-level subsections */
+  color: #7fb0ff; /* blue — top-level subsections */
 }
 
 .prose :where(h3) {
-  color: #a9c8ef;
+  color: #5fd3b2; /* teal */
 }
 
-.prose :where(h4, h5, h6) {
-  color: #93b4e0;
+.prose :where(h4) {
+  color: #c79cf0; /* purple */
+}
+
+.prose :where(h5) {
+  color: #f29ec4; /* pink */
+}
+
+.prose :where(h6) {
+  color: #a6b0bb; /* muted gray */
 }
 
 /* Underline rule under h1/h2 to reinforce section boundaries */

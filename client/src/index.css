@@ -47,6 +47,35 @@
   background: transparent;
 }
 
+/* Heading colors — brighter than body text and tinted per level so the
+   start of each subsection is easy to spot when scanning a long page.
+   Body text is ~#cdced2; headings climb toward white with a cool tint. */
+.prose :where(h1, h2, h3, h4, h5, h6) {
+  color: #f4f5f7;
+}
+
+.prose :where(h1) {
+  color: #ffffff;
+}
+
+.prose :where(h2) {
+  color: #c3d4f5; /* soft blue — top-level subsections */
+}
+
+.prose :where(h3) {
+  color: #a9c8ef;
+}
+
+.prose :where(h4, h5, h6) {
+  color: #93b4e0;
+}
+
+/* Underline rule under h1/h2 to reinforce section boundaries */
+.prose :where(h1, h2) {
+  border-bottom: 1px solid var(--color-gray-700);
+  padding-bottom: 0.3em;
+}
+
 .prose code:not(pre code) {
   background-color: var(--color-gray-700);
   padding: 0.125rem 0.375rem;

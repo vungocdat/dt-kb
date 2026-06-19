@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { hashPassword, verifyPassword } from '../lib/crypto.js';
 import { getSession, requireAuth } from '../lib/session.js';
 
-const KB_USERNAME = process.env.KB_USERNAME ?? '';
+let currentUsername = process.env.KB_USERNAME ?? '';
 let currentPasswordHash = process.env.KB_PASSWORD_HASH ?? '';
 
 // ── Simple in-memory rate limiter (single-user app, no distributed state) ──
@@ -68,6 +68,26 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8).max(1024),
 });
 
+const changeUsernameSchema = z.object({
+  currentPassword: z.string().min(1).max(1024),
+  newUsername: z.string().min(1).max(256),
+});
+
+/**
+ * Persist a single KEY=value line into the .env file when one is reachable.
+ * No-op in containerised / read-only deployments — the in-memory value is the
+ * source of truth there.
+ */
+function persistEnv(key: string, value: string): void {
+  const envPath = process.env.KB_ENV_PATH ?? '';
+  if (!envPath || !existsSync(envPath)) return;
+  const content = readFileSync(envPath, 'utf-8');
+  const line = `${key}=${value}`;
+  const pattern = new RegExp(`^${key}=.*`, 'm');
+  const updated = pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`;
+  writeFileSync(envPath, updated, 'utf-8');
+}
+
 export const authRouter = new Hono();
 
 authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
@@ -78,7 +98,7 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
 
   const { username, password } = c.req.valid('json');
 
-  const usernameOk = username === KB_USERNAME;
+  const usernameOk = username === currentUsername;
   // Always run bcrypt compare (even on bad username) to avoid leaking which
   // field was wrong via response timing.
   const passwordOk = await verifyPassword(password, currentPasswordHash);
@@ -88,11 +108,11 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
   }
 
   const { session, commit } = await getSession(c);
-  session.username = KB_USERNAME;
+  session.username = currentUsername;
   await session.save();
   commit();
 
-  return c.json({ username: KB_USERNAME }, 200);
+  return c.json({ username: currentUsername }, 200);
 });
 
 authRouter.post('/logout', async (c) => {
@@ -121,12 +141,7 @@ authRouter.patch('/password', requireAuth, zValidator('json', changePasswordSche
   const newHash = await hashPassword(newPassword);
 
   // Persist to .env file when reachable (dev and self-hosted production).
-  const envPath = process.env.KB_ENV_PATH ?? '';
-  if (envPath && existsSync(envPath)) {
-    const content = readFileSync(envPath, 'utf-8');
-    const updated = content.replace(/^KB_PASSWORD_HASH=.*/m, `KB_PASSWORD_HASH=${newHash}`);
-    writeFileSync(envPath, updated, 'utf-8');
-  }
+  persistEnv('KB_PASSWORD_HASH', newHash);
 
   // Always update in-memory so subsequent logins use the new hash immediately,
   // even if .env is not writable (containerised / read-only production).
@@ -134,4 +149,34 @@ authRouter.patch('/password', requireAuth, zValidator('json', changePasswordSche
   process.env.KB_PASSWORD_HASH = newHash;
 
   return c.json({ ok: true }, 200);
+});
+
+authRouter.patch('/username', requireAuth, zValidator('json', changeUsernameSchema), async (c) => {
+  const { currentPassword, newUsername } = c.req.valid('json');
+
+  // Require the password to authorise the change (same bar as a password change).
+  const ok = await verifyPassword(currentPassword, currentPasswordHash);
+  if (!ok) {
+    return c.json({ error: 'Current password is incorrect' }, 400);
+  }
+
+  const trimmed = newUsername.trim();
+  if (!trimmed) {
+    return c.json({ error: 'Username cannot be empty' }, 400);
+  }
+
+  // Persist to .env when reachable, then update in-memory so the next login uses it.
+  persistEnv('KB_USERNAME', trimmed);
+  currentUsername = trimmed;
+  process.env.KB_USERNAME = trimmed;
+
+  // Update the active session so the current cookie stays valid under the new name.
+  const { session, commit } = await getSession(c);
+  if (session.username) {
+    session.username = trimmed;
+    await session.save();
+    commit();
+  }
+
+  return c.json({ username: trimmed }, 200);
 });

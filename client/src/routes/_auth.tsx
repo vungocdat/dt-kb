@@ -5,7 +5,8 @@ import AppShell from '../components/AppShell'
 export const Route = createFileRoute('/_auth')({
   beforeLoad: async () => {
     try {
-      await getMe()
+      const { username } = await getMe()
+      return { username }
     } catch {
       throw redirect({ to: '/login' })
     }

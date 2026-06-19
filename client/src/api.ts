@@ -104,6 +104,16 @@ export async function changePassword(currentPassword: string, newPassword: strin
   })
 }
 
+export async function changeUsername(
+  currentPassword: string,
+  newUsername: string,
+): Promise<{ username: string }> {
+  return apiFetch<{ username: string }>('/api/auth/username', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newUsername }),
+  })
+}
+
 // ── Spaces ────────────────────────────────────────────────────────────────────
 
 export async function getSpaces(): Promise<Space[]> {

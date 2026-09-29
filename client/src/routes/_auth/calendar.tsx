@@ -10,6 +10,7 @@ import {
 import MarkdownEditor from '../../components/editor/MarkdownEditor'
 import { MarkdownRenderer } from '../../components/editor/MarkdownRenderer'
 import { Skeleton } from '../../components/ui/Skeleton'
+import { lunarFor, lunarMonthSpan, type LunarDay } from '../../lib/lunar'
 import { useUIStore } from '../../store'
 
 export const Route = createFileRoute('/_auth/calendar')({
@@ -59,6 +60,15 @@ function formatLongDate(iso: string): string {
   }).format(new Date(y, m - 1, d))
 }
 
+/** Colour of the small lunar label under each day number. */
+const LUNAR_LABEL_CLASS: Record<LunarDay['kind'], string> = {
+  festival: 'text-red-400 font-medium',
+  term: 'text-emerald-400/80',
+  newMonth: 'text-amber-400/90 font-medium',
+  fullMoon: 'text-amber-400/90',
+  day: 'text-gray-500',
+}
+
 /** Starter body for a new note, so the editor doesn't open on a blank page. */
 const noteTemplate = (iso: string) => `# ${formatLongDate(iso)}\n\n`
 
@@ -85,6 +95,15 @@ function Calendar() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const cells = useMemo(() => buildGrid(view.year, view.month), [view])
+  const lunarSpan = useMemo(
+    () =>
+      lunarMonthSpan(
+        toISO(new Date(view.year, view.month, 1)),
+        toISO(new Date(view.year, view.month + 1, 0)),
+      ),
+    [view],
+  )
+  const selectedLunar = lunarFor(selected)
   const cellRefs = useRef(new Map<string, HTMLButtonElement>())
   // Set when arrow-key nav crosses a month boundary: the destination button
   // doesn't exist until the new view renders, so focus is handed over below.
@@ -230,9 +249,12 @@ function Calendar() {
       {/* ── Month grid: grows with the window, capped so cells stay sane on ultra-wide ── */}
       <div className="flex flex-col min-h-0 min-w-0 flex-1 xl:max-w-[68rem]">
         <div className="flex items-center gap-2 mb-4 flex-shrink-0">
-          <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-100">
-            {formatMonthLabel(view.year, view.month)}
-          </h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-100">
+              {formatMonthLabel(view.year, view.month)}
+            </h1>
+            <p className="text-xs 2xl:text-sm text-gray-500 truncate">Âm lịch: {lunarSpan}</p>
+          </div>
           <div className="flex-1" />
           <button
             onClick={() => goToMonth(view.year, view.month - 1)}
@@ -284,6 +306,7 @@ function Calendar() {
             const isToday = iso === todayISO
             const isSelected = iso === selected
             const hasNote = noteDates.has(iso)
+            const lunar = lunarFor(iso)
 
             return (
               <button
@@ -293,10 +316,11 @@ function Calendar() {
                   else cellRefs.current.delete(iso)
                 }}
                 onClick={() => selectDate(cell)}
-                aria-label={formatLongDate(iso)}
+                aria-label={`${formatLongDate(iso)}, ${lunar.full}`}
+                title={[lunar.full, lunar.festivalFull, lunar.tietKhi].filter(Boolean).join(' · ')}
                 aria-current={isToday ? 'date' : undefined}
                 aria-pressed={isSelected}
-                className={`h-full w-full min-h-0 flex flex-col items-center justify-center gap-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                className={`h-full w-full min-h-0 min-w-0 px-0.5 flex flex-col items-center justify-center gap-0.5 2xl:gap-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                   isSelected
                     ? 'border-gray-500 bg-gray-800'
                     : isToday
@@ -315,6 +339,13 @@ function Calendar() {
                 >
                   {cell.getDate()}
                 </span>
+                <span
+                  className={`max-w-full truncate text-[10px] 2xl:text-xs leading-tight ${
+                    LUNAR_LABEL_CLASS[lunar.kind]
+                  } ${inMonth ? '' : 'opacity-50'}`}
+                >
+                  {lunar.label}
+                </span>
                 {/* Reserve the dot's row either way so cells never jump height */}
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
@@ -329,13 +360,27 @@ function Calendar() {
 
       {/* ── Selected day's note ── */}
       <section className="flex flex-col min-w-0 min-h-0 flex-none xl:flex-[2] h-[32rem] xl:h-auto bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-        <header className="flex items-center gap-2 px-4 h-12 flex-shrink-0 border-b border-gray-800">
-          <h2 className="text-sm font-semibold text-gray-200 truncate">
-            {formatLongDate(selected)}
-          </h2>
-          {selected === todayISO && (
-            <span className="text-xs text-blue-400 flex-shrink-0">Today</span>
-          )}
+        <header className="flex items-center gap-2 px-4 h-14 flex-shrink-0 border-b border-gray-800">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-200 truncate">
+                {formatLongDate(selected)}
+              </h2>
+              {selected === todayISO && (
+                <span className="text-xs text-blue-400 flex-shrink-0">Today</span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 truncate">
+              {selectedLunar.full}
+              {' · '}ngày {selectedLunar.dayCanChi}, tháng {selectedLunar.monthCanChi}
+              {selectedLunar.festivalFull && (
+                <span className="text-red-400"> · {selectedLunar.festivalFull}</span>
+              )}
+              {selectedLunar.tietKhi && (
+                <span className="text-emerald-400/80"> · {selectedLunar.tietKhi}</span>
+              )}
+            </p>
+          </div>
           <div className="flex-1" />
 
           {note && !confirmingDelete && (

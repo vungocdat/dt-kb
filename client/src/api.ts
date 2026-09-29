@@ -267,12 +267,14 @@ export interface Todo {
   title: string
   done: boolean
   sortOrder: number
+  /** Pinned open tasks sit at the top; a done task keeps its pin for un-ticking. */
+  pinned: boolean
   createdAt: number
   updatedAt: number
   completedAt: number | null
 }
 
-/** Every task: open ones in list order, then finished ones, most recent first. */
+/** Every task: open ones (pinned first) in list order, then finished ones, most recent first. */
 export async function getTodos(): Promise<Todo[]> {
   return apiFetch<Todo[]>('/api/todos')
 }
@@ -283,7 +285,7 @@ export async function createTodo(title: string): Promise<Todo> {
 
 export async function updateTodo(
   id: string,
-  data: { title?: string; done?: boolean },
+  data: { title?: string; done?: boolean; pinned?: boolean },
 ): Promise<Todo> {
   return apiFetch<Todo>(`/api/todos/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 }

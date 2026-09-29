@@ -17,7 +17,7 @@ The app has three top-level tabs in the sidebar — **Knowledge base**, **Calend
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
 - **Calendar** — a separate month view focused on today, where each day can hold one Markdown note, written and read without leaving the calendar; calendar notes are independent of spaces and pages
 - **Vietnamese lunar calendar (âm lịch)** — every day in the calendar shows its lunar date, with Vietnamese holidays (Tết, Giỗ Tổ, Trung Thu, …), the 24 solar terms (tiết khí) and Can Chi names; computed for UTC+7, so dates match Vietnamese calendars even in years where they differ from the Chinese one
-- **To-do** — a simple task list: add, tick off, rename and delete tasks; finished tasks collect in a collapsible Completed section with a one-click "Clear completed"
+- **To-do** — a simple task list: add, tick off, rename and delete tasks; pin important ones so they stay at the top; finished tasks collect in a collapsible Completed section with a one-click "Clear completed"
 - **Adjustable tabs** — drag the sidebar tabs (or use `Alt+↑/↓`) to put them in any order, and choose which tab the app opens on under **Settings → Default page** (Calendar by default); both preferences are saved per browser
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
 - **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`; code blocks have a one-click copy-to-clipboard button

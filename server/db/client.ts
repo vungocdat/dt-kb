@@ -64,14 +64,15 @@ export function initializeDb(): void {
     );
 
     -- todos: the To-do tab's storage, a flat list unrelated to pages and to
-    -- the calendar. done is 0/1; completed_at is set while done so finished
-    -- items can be listed most-recent first. Runtime-created for the same
-    -- reason as calendar_notes.
+    -- the calendar. done and pinned are 0/1; completed_at is set while done so
+    -- finished items can be listed most-recent first. Runtime-created for the
+    -- same reason as calendar_notes.
     CREATE TABLE IF NOT EXISTS todos (
       id           TEXT PRIMARY KEY,
       title        TEXT NOT NULL,
       done         INTEGER NOT NULL DEFAULT 0,
       sort_order   INTEGER NOT NULL,
+      pinned       INTEGER NOT NULL DEFAULT 0,
       created_at   INTEGER NOT NULL,
       updated_at   INTEGER NOT NULL,
       completed_at INTEGER
@@ -99,6 +100,17 @@ export function initializeDb(): void {
       DELETE FROM pages_fts WHERE id = old.id;
     END;
   `);
+
+  // Columns added to runtime tables after they first shipped. CREATE TABLE IF
+  // NOT EXISTS leaves an existing table alone, so add any that are missing.
+  addColumnIfMissing('todos', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
+}
+
+function addColumnIfMissing(table: string, column: string, definition: string): void {
+  const columns = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!columns.some((c) => c.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 /**

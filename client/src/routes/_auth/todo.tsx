@@ -14,11 +14,16 @@ export const Route = createFileRoute('/_auth/todo')({
   component: TodoList,
 })
 
-/** Same order the server returns: open by list position, done most-recent first. */
+/**
+ * Same order the server returns: open tasks pinned first, then by list
+ * position; done tasks most-recent first (their pin only matters once un-ticked).
+ */
 function sortTodos(todos: Todo[]): Todo[] {
   return [...todos].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
-    return a.done ? (b.completedAt ?? 0) - (a.completedAt ?? 0) : a.sortOrder - b.sortOrder
+    if (a.done) return (b.completedAt ?? 0) - (a.completedAt ?? 0)
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+    return a.sortOrder - b.sortOrder
   })
 }
 
@@ -91,6 +96,12 @@ function TodoList() {
       () => updateTodo(todo.id, { done: !todo.done }),
     )
 
+  const togglePin = (todo: Todo) =>
+    optimistic(
+      (prev) => prev.map((t) => (t.id === todo.id ? { ...t, pinned: !t.pinned } : t)),
+      () => updateTodo(todo.id, { pinned: !todo.pinned }),
+    )
+
   const rename = (todo: Todo, title: string) =>
     optimistic(
       (prev) => prev.map((t) => (t.id === todo.id ? { ...t, title } : t)),
@@ -158,7 +169,7 @@ function TodoList() {
             ) : (
               <ul className="space-y-1">
                 {open.map((todo) => (
-                  <TodoItem key={todo.id} todo={todo} onToggle={toggle} onRename={rename} onDelete={remove} />
+                  <TodoItem key={todo.id} todo={todo} onToggle={toggle} onTogglePin={togglePin} onRename={rename} onDelete={remove} />
                 ))}
               </ul>
             )}
@@ -190,7 +201,7 @@ function TodoList() {
                 {showCompleted && (
                   <ul className="space-y-1">
                     {done.map((todo) => (
-                      <TodoItem key={todo.id} todo={todo} onToggle={toggle} onRename={rename} onDelete={remove} />
+                      <TodoItem key={todo.id} todo={todo} onToggle={toggle} onTogglePin={togglePin} onRename={rename} onDelete={remove} />
                     ))}
                   </ul>
                 )}
@@ -206,11 +217,22 @@ function TodoList() {
 interface TodoItemProps {
   todo: Todo
   onToggle: (todo: Todo) => void
+  onTogglePin: (todo: Todo) => void
   onRename: (todo: Todo, title: string) => void
   onDelete: (todo: Todo) => void
 }
 
-function TodoItem({ todo, onToggle, onRename, onDelete }: TodoItemProps) {
+/** Pushpin (Tabler "pin" outline); filled when the task is pinned. */
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <path d="M15 4.5l-4 4-4 1.5-1.5 1.5 7 7 1.5-1.5 1.5-4 4-4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M9 15l-4.5 4.5M14.5 4l5.5 5.5" />
+    </svg>
+  )
+}
+
+function TodoItem({ todo, onToggle, onTogglePin, onRename, onDelete }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(todo.title)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -228,8 +250,18 @@ function TodoItem({ todo, onToggle, onRename, onDelete }: TodoItemProps) {
     if (trimmed && trimmed !== todo.title) onRename(todo, trimmed)
   }
 
+  // A done task keeps its pin (it returns to the top if un-ticked) but doesn't
+  // show it — pinning only orders the open list.
+  const showPinned = todo.pinned && !todo.done
+
   return (
-    <li className="group flex items-center gap-3 px-3 py-2 rounded-md border border-gray-800 bg-gray-900 hover:border-gray-700 transition-colors">
+    <li
+      className={`group flex items-center gap-3 px-3 py-2 rounded-md border transition-colors ${
+        showPinned
+          ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50'
+          : 'border-gray-800 bg-gray-900 hover:border-gray-700'
+      }`}
+    >
       <button
         onClick={() => onToggle(todo)}
         role="checkbox"
@@ -269,6 +301,23 @@ function TodoItem({ todo, onToggle, onRename, onDelete }: TodoItemProps) {
         >
           {todo.title}
         </span>
+      )}
+
+      {/* Always visible while pinned, so important tasks read as such at a glance */}
+      {!editing && !todo.done && (
+        <button
+          onClick={() => onTogglePin(todo)}
+          aria-pressed={todo.pinned}
+          aria-label={todo.pinned ? `Unpin "${todo.title}"` : `Pin "${todo.title}" to the top`}
+          title={todo.pinned ? 'Unpin' : 'Pin to top'}
+          className={`p-1 rounded flex-shrink-0 transition-opacity focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            todo.pinned
+              ? 'text-amber-400 hover:text-amber-300 hover:bg-gray-800'
+              : 'text-gray-500 hover:text-gray-200 hover:bg-gray-800 opacity-0 group-hover:opacity-100 focus:opacity-100'
+          }`}
+        >
+          <PinIcon filled={todo.pinned} />
+        </button>
       )}
 
       {!editing && (

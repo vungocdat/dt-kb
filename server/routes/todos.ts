@@ -10,8 +10,9 @@ import { requireAuth } from '../lib/session.js';
  * The To-do tab: a single flat list of tasks in the todos table (created in
  * initializeDb()). Unrelated to pages, spaces, search and the calendar.
  *
- * Open tasks are ordered by sort_order (new ones append to the end); finished
- * ones by completed_at, most recent first.
+ * Open tasks are ordered pinned first, then by sort_order (new ones append to
+ * the end); finished ones by completed_at, most recent first. A done task keeps
+ * its pin, so un-ticking it puts it back at the top.
  */
 
 interface TodoRow {
@@ -19,6 +20,7 @@ interface TodoRow {
   title: string;
   done: number;
   sort_order: number;
+  pinned: number;
   created_at: number;
   updated_at: number;
   completed_at: number | null;
@@ -28,7 +30,10 @@ interface TodoRow {
 
 const stmtList = sqlite.prepare<[], TodoRow>(`
   SELECT * FROM todos
-  ORDER BY done, CASE WHEN done = 0 THEN sort_order END, completed_at DESC
+  ORDER BY done,
+    CASE WHEN done = 0 THEN pinned END DESC,
+    CASE WHEN done = 0 THEN sort_order END,
+    completed_at DESC
 `);
 
 const stmtGet = sqlite.prepare<[string], TodoRow>(`SELECT * FROM todos WHERE id = ?`);
@@ -44,7 +49,8 @@ const stmtInsert = sqlite.prepare(`
 
 const stmtUpdate = sqlite.prepare(`
   UPDATE todos SET
-    title = @title, done = @done, completed_at = @completedAt, updated_at = @now
+    title = @title, done = @done, pinned = @pinned, completed_at = @completedAt,
+    updated_at = @now
   WHERE id = @id
 `);
 
@@ -59,6 +65,7 @@ function toTodo(row: TodoRow) {
     title: row.title,
     done: row.done === 1,
     sortOrder: row.sort_order,
+    pinned: row.pinned === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
@@ -80,8 +87,12 @@ const title = z.string().trim().min(1, 'title is required').max(500);
 const createSchema = z.object({ title });
 
 const updateSchema = z
-  .object({ title: title.optional(), done: z.boolean().optional() })
-  .refine((b) => b.title !== undefined || b.done !== undefined, {
+  .object({
+    title: title.optional(),
+    done: z.boolean().optional(),
+    pinned: z.boolean().optional(),
+  })
+  .refine((b) => b.title !== undefined || b.done !== undefined || b.pinned !== undefined, {
     message: 'nothing to update',
   });
 
@@ -111,7 +122,7 @@ todosRouter.delete('/completed', (c) => {
   return c.json({ deleted: changes });
 });
 
-// PATCH /:id — rename and/or tick/untick
+// PATCH /:id — rename, tick/untick and/or pin/unpin
 todosRouter.patch('/:id', zValidator('json', updateSchema), (c) => {
   const row = requireTodo(c.req.param('id'));
   const body = c.req.valid('json');
@@ -124,6 +135,7 @@ todosRouter.patch('/:id', zValidator('json', updateSchema), (c) => {
     id: row.id,
     title: body.title ?? row.title,
     done: done ? 1 : 0,
+    pinned: (body.pinned ?? row.pinned === 1) ? 1 : 0,
     completedAt,
     now: now(),
   });

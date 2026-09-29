@@ -345,8 +345,10 @@ function PageTreeItem({
     }
   }
 
-  // Indentation: 12px base + 16px per depth level
-  const paddingLeft = 12 + depth * 16
+  // Indentation: 16px per level, with root pages already one level in. The
+  // space header's chevron sits at 16px (mx-1 + px-3), so root pages start at
+  // 32px — otherwise a space and its direct children look like siblings.
+  const paddingLeft = 32 + depth * 16
 
   return (
     <li

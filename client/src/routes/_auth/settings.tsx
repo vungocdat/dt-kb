@@ -1,39 +1,23 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { changePassword, changeUsername } from '../../api'
 import { loadDefaultTab, loadTabOrder, saveDefaultTab, TABS, type TabId } from '../../lib/tabs'
-import { useDocumentTitle } from '../../lib/title'
+import PageLayout from '../../components/layout/PageLayout'
 
 export const Route = createFileRoute('/_auth/settings')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
-  useDocumentTitle('Settings')
   return (
-    <div className="min-h-full bg-gray-950 px-4 py-8">
-      <div className="max-w-md mx-auto mt-16">
-        {/* Back link */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-6"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Home
-        </Link>
-
-        {/* Page heading */}
-        <h1 className="text-xl font-semibold text-gray-100 mb-8">Settings</h1>
-
-        <div className="space-y-6">
-          <DefaultPageCard />
-          <ChangeUsernameCard />
-          <ChangePasswordCard />
-        </div>
+    <PageLayout title="Settings">
+      {/* Forms read badly stretched wide, so the cards keep a narrower column */}
+      <div className="max-w-xl space-y-6">
+        <DefaultPageCard />
+        <ChangeUsernameCard />
+        <ChangePasswordCard />
       </div>
-    </div>
+    </PageLayout>
   )
 }
 
@@ -50,7 +34,7 @@ function DefaultPageCard() {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-      <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wide mb-2">
+      <h2 className="text-sm font-semibold text-gray-100 mb-1">
         Default page
       </h2>
       <p id="defaultPageHint" className="text-sm text-gray-500 mb-4">
@@ -127,8 +111,8 @@ function ChangeUsernameCard() {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-      <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wide mb-5">
-        Change Username
+      <h2 className="text-sm font-semibold text-gray-100 mb-5">
+        Change username
       </h2>
 
       <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
@@ -248,8 +232,8 @@ function ChangePasswordCard() {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-      <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wide mb-5">
-        Change Password
+      <h2 className="text-sm font-semibold text-gray-100 mb-5">
+        Change password
       </h2>
 
       <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">

@@ -74,7 +74,8 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
   return (
     <div
       ref={ref}
-      className="prose prose-invert max-w-none px-8 py-6"
+      // max-w-3xl keeps prose lines at a readable ~75 characters on wide screens
+      className="prose prose-invert max-w-3xl mx-auto px-8 py-6"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

@@ -4,12 +4,14 @@ import { getSpaces, getRecentPages, type Space, type RecentPage } from '../../ap
 import SpaceCard from '../../components/dashboard/SpaceCard'
 import RecentPages from '../../components/dashboard/RecentPages'
 import { Skeleton } from '../../components/ui/Skeleton'
+import { useDocumentTitle } from '../../lib/title'
 
 export const Route = createFileRoute('/_auth/kb')({
   component: Dashboard,
 })
 
 function Dashboard() {
+  useDocumentTitle('Knowledge base')
   const [spaces, setSpaces] = useState<Space[]>([])
   const [recent, setRecent] = useState<RecentPage[]>([])
   const [loading, setLoading] = useState(true)

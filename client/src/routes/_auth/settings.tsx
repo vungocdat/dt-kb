@@ -2,12 +2,14 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { changePassword, changeUsername } from '../../api'
 import { loadDefaultTab, loadTabOrder, saveDefaultTab, TABS, type TabId } from '../../lib/tabs'
+import { useDocumentTitle } from '../../lib/title'
 
 export const Route = createFileRoute('/_auth/settings')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
+  useDocumentTitle('Settings')
   return (
     <div className="min-h-full bg-gray-950 px-4 py-8">
       <div className="max-w-md mx-auto mt-16">

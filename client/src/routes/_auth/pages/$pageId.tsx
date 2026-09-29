@@ -6,6 +6,7 @@ import MarkdownEditor from '../../../components/editor/MarkdownEditor'
 import { MarkdownRenderer } from '../../../components/editor/MarkdownRenderer'
 import { TableOfContents } from '../../../components/layout/TableOfContents'
 import { Skeleton } from '../../../components/ui/Skeleton'
+import { useDocumentTitle } from '../../../lib/title'
 
 export const Route = createFileRoute('/_auth/pages/$pageId')({
   component: PageView,
@@ -20,6 +21,7 @@ function PageView() {
   const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  useDocumentTitle(page ? page.title || 'Untitled' : null)
 
   // Shared scroll fraction between read and edit modes — updated by whichever is active.
   const scrollFractionRef = useRef(0)
@@ -95,10 +97,7 @@ function PageView() {
     const load = async () => {
       try {
         const p = await getPage(pageId)
-        if (!cancelled) {
-          setPage(p)
-          document.title = `${p.title} — dt-kb`
-        }
+        if (!cancelled) setPage(p)
       } catch {
         if (!cancelled) setError('Page not found or failed to load.')
       } finally {
@@ -110,13 +109,12 @@ function PageView() {
 
     return () => {
       cancelled = true
-      document.title = 'dt-kb'
     }
   }, [pageId, setMode])
 
   if (loading) {
     return (
-      <div className="px-8 py-8 max-w-4xl mx-auto space-y-4">
+      <div className="px-8 py-6 max-w-3xl mx-auto space-y-4">
         <Skeleton className="h-7 w-64 mb-6" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />

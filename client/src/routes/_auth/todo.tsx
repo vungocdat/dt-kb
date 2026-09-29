@@ -9,6 +9,7 @@ import {
   type Todo,
 } from '../../api'
 import { Skeleton } from '../../components/ui/Skeleton'
+import { useDocumentTitle } from '../../lib/title'
 
 export const Route = createFileRoute('/_auth/todo')({
   component: TodoList,
@@ -28,6 +29,7 @@ function sortTodos(todos: Todo[]): Todo[] {
 }
 
 function TodoList() {
+  useDocumentTitle('To-do')
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

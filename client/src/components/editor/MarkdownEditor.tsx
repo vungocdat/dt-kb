@@ -1,11 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
-import CodeMirror from '@uiw/react-codemirror'
+import CodeMirror, { Prec } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView } from '@codemirror/view'
 import { useUIStore } from '../../store'
+
+/**
+ * One Dark keeps the syntax colours, but its bluish #282c34 surfaces clash with
+ * the app's neutral grays. Make the editor transparent so it sits on whatever
+ * surface hosts it (page body or calendar pane). Prec.highest so these rules
+ * win over One Dark's own theme.
+ */
+const kbEditorTheme = Prec.highest(
+  EditorView.theme(
+    {
+      '&': { color: 'var(--kb-gray-100)', backgroundColor: 'transparent' },
+      '.cm-gutters': {
+        backgroundColor: 'transparent',
+        color: 'var(--kb-gray-500)',
+        borderRight: '1px solid var(--kb-gray-800)',
+      },
+      '.cm-activeLine': { backgroundColor: 'rgba(255, 255, 255, 0.03)' },
+      '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--kb-gray-300)' },
+      '.cm-panels': { backgroundColor: 'var(--kb-gray-900)', color: 'var(--kb-gray-100)' },
+      '.cm-panels.cm-panels-top': { borderBottom: '1px solid var(--kb-gray-700)' },
+      '.cm-panels.cm-panels-bottom': { borderTop: '1px solid var(--kb-gray-700)' },
+    },
+    { dark: true },
+  ),
+)
 
 interface MarkdownEditorProps {
   initialContent: string
@@ -118,6 +143,7 @@ export default function MarkdownEditor({
 
   const extensions = [
     markdown({ base: markdownLanguage, codeLanguages: languages }),
+    kbEditorTheme,
   ]
 
   return (

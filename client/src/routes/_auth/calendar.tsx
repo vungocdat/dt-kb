@@ -12,6 +12,7 @@ import { MarkdownRenderer } from '../../components/editor/MarkdownRenderer'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { lunarFor, lunarMonthSpan, type LunarDay } from '../../lib/lunar'
 import { useUIStore } from '../../store'
+import { useDocumentTitle } from '../../lib/title'
 
 export const Route = createFileRoute('/_auth/calendar')({
   component: Calendar,
@@ -73,6 +74,7 @@ const LUNAR_LABEL_CLASS: Record<LunarDay['kind'], string> = {
 const noteTemplate = (iso: string) => `# ${formatLongDate(iso)}\n\n`
 
 function Calendar() {
+  useDocumentTitle('Calendar')
   const today = useMemo(() => new Date(), [])
   const todayISO = toISO(today)
 

@@ -28,6 +28,9 @@
    around #cdced2 (never pure white) to keep contrast gentle. */
 :root,
 .dark {
+  /* Native scrollbars, form controls and autofill render in their dark style */
+  color-scheme: dark;
+
   --kb-gray-50: #ebebed; /* brightest text / hover */
   --kb-gray-100: #cdced2; /* primary text */
   --kb-gray-200: #c1c2c5; /* headings / strong text */
@@ -96,7 +99,10 @@
   content: none;
 }
 
-/* highlight.js block styling */
+/* highlight.js block styling — atom-one-dark keeps the token colours, but its
+   bluish #282c34 background is swapped for the neutral surface gray. */
 .prose pre code.hljs {
+  background: var(--kb-gray-800);
+  border: 1px solid var(--kb-gray-700);
   border-radius: 0.5rem;
 }

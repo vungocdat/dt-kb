@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getMe, login } from '../api'
+import { useDocumentTitle } from '../lib/title'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
@@ -18,6 +19,7 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
+  useDocumentTitle('Sign in')
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')

@@ -5,9 +5,10 @@ interface RecentPagesProps {
   pages: RecentPage[]
 }
 
+/** `timestamp` is a Unix epoch in *seconds* — the API's updated_at unit. */
 function formatRelativeTime(timestamp: number): string {
   const now = Date.now()
-  const diff = now - timestamp
+  const diff = now - timestamp * 1000
   const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
   const seconds = Math.round(diff / 1000)

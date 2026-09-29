@@ -47,6 +47,27 @@ export interface SearchResult {
   snippet: string
 }
 
+/** A day note that already exists, keyed by its ISO date title. */
+export interface JournalDay {
+  date: string
+  pageId: string
+}
+
+export interface JournalMonth {
+  spaceId: string | null
+  spaceName: string | null
+  days: JournalDay[]
+  /** Every page edited in the requested window — bucketed by local date client-side. */
+  activity: RecentPage[]
+}
+
+export interface JournalDayRef {
+  pageId: string
+  spaceId: string
+  spaceCreated: boolean
+  created: boolean
+}
+
 // ── Base fetch ────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(
@@ -200,6 +221,37 @@ export async function movePage(
   return apiFetch<Page>(`/api/pages/${id}/move`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+// ── Journal ───────────────────────────────────────────────────────────────────
+
+/**
+ * One request per calendar view. `from`/`to` are the ISO dates of the first and
+ * last visible cell; `startTs`/`endTs` are the matching *local* epoch bounds
+ * (endTs exclusive). Both are sent because the server deliberately doesn't guess
+ * the browser's UTC offset — see server/routes/journal.ts.
+ */
+export async function getJournalMonth(
+  from: string,
+  to: string,
+  startTs: number,
+  endTs: number,
+): Promise<JournalMonth> {
+  const params = new URLSearchParams({
+    from,
+    to,
+    startTs: String(startTs),
+    endTs: String(endTs),
+  })
+  return apiFetch<JournalMonth>(`/api/journal/month?${params.toString()}`)
+}
+
+/** Open (creating on first use) the day note for an ISO date. */
+export async function openJournalDay(date: string): Promise<JournalDayRef> {
+  return apiFetch<JournalDayRef>('/api/journal/day', {
+    method: 'POST',
+    body: JSON.stringify({ date }),
   })
 }
 

@@ -43,9 +43,9 @@ function LoginPage() {
       <div className="w-full max-w-sm bg-gray-800 rounded-lg p-8 shadow-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-100 tracking-tight">
-            DT knowledge base
+            DT workspace
           </h1>
-          <p className="mt-1 text-sm text-gray-400">Sign in to your knowledge base</p>
+          <p className="mt-1 text-sm text-gray-400">Sign in to your workspace</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

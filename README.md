@@ -1,8 +1,8 @@
-# DT Knowledge base
+# DT Workspace
 
 > **Warning:** This project is fully vibe coded. No formal testing, no security audit, no production hardening. Use at your own risk.
 
-A self-hosted, single-user knowledge base where every page is stored as raw Markdown. Built for sysadmins and developers who want a fast, private place to keep code snippets, tech notes, and learning journals — with no database overhead beyond a single SQLite file.
+A self-hosted, single-user workspace where every page is stored as raw Markdown. Built for sysadmins and developers who want a fast, private place to keep code snippets, tech notes, and learning journals — with no database overhead beyond a single SQLite file.
 
 Inspired by Docmost and One Markdown
 
@@ -13,6 +13,7 @@ Inspired by Docmost and One Markdown
 - **Dual view per page** — Read mode (rendered HTML with syntax highlighting) and Edit mode (CodeMirror raw Markdown editor)
 - **Auto-save** — edits are saved 800 ms after you stop typing
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
+- **Calendar** — month view focused on today; each day links to its journal note (created on first click) and shows how many pages you edited that day
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
 - **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`; code blocks have a one-click copy-to-clipboard button
 - **Table of contents** — sticky right sidebar in Read mode listing all headings with active-section highlighting and click-to-scroll; auto-hidden when fewer than 2 headings

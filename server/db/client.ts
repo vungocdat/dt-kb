@@ -38,7 +38,8 @@ export const sqlite: Database.Database = new Database(ensureDbDirectory(DB_PATH)
 export const db: BetterSQLite3Database<typeof schema> = drizzle(sqlite, { schema });
 
 /**
- * Apply PRAGMAs and create FTS5 virtual table + sync triggers. Idempotent.
+ * Apply PRAGMAs and create the runtime-managed tables: the FTS5 virtual table
+ * with its sync triggers, and app_settings. Idempotent.
  * Call AFTER migrations have created the base tables.
  */
 export function initializeDb(): void {
@@ -48,6 +49,15 @@ export function initializeDb(): void {
   sqlite.pragma('busy_timeout = 5000');
 
   sqlite.exec(`
+    -- app_settings: single-row-per-key store for app state that isn't page data
+    -- (currently only journal_space_id). Created here rather than via a Drizzle
+    -- migration so existing databases pick it up on restart without a manual
+    -- "drizzle-kit push" — same reasoning as pages_fts below.
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
     CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
       id UNINDEXED,
       space_id UNINDEXED,

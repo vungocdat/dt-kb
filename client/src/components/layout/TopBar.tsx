@@ -139,7 +139,7 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
               )}
             </>
           ) : (
-            <span className="text-gray-400">dt-kb</span>
+            <span className="text-gray-400">DT workspace</span>
           )}
         </div>
       </div>

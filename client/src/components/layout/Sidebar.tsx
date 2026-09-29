@@ -11,6 +11,34 @@ interface SidebarProps {
   onPageCreated: () => void
 }
 
+interface NavItemProps {
+  to: '/' | '/calendar'
+  label: string
+  collapsed: boolean
+  /** Exact match — needed for '/', which would otherwise match every route. */
+  exact?: boolean
+  children: React.ReactNode
+}
+
+/** A fixed top-level destination (not a space) in the sidebar nav. */
+function NavItem({ to, label, collapsed, exact, children }: NavItemProps) {
+  return (
+    <Link
+      to={to}
+      activeOptions={exact ? { exact: true } : undefined}
+      title={collapsed ? label : undefined}
+      aria-label={label}
+      className={`flex items-center gap-2 rounded mx-1 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors ${
+        collapsed ? 'justify-center px-2' : ''
+      }`}
+      activeProps={{ className: 'bg-gray-800 text-gray-100 font-medium' }}
+    >
+      <span className="flex-shrink-0 text-gray-400">{children}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
+    </Link>
+  )
+}
+
 export default function Sidebar({ collapsed, refreshKey, onPageCreated }: SidebarProps) {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const [spaces, setSpaces] = useState<Space[]>([])
@@ -105,7 +133,7 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
       <div className="flex items-center h-12 px-3 border-b border-gray-800 flex-shrink-0">
         {!collapsed && (
           <Link to="/" className="flex-1 font-semibold text-gray-100 text-sm tracking-tight truncate hover:text-blue-400 transition-colors">
-            DT knowledge base
+            DT workspace
           </Link>
         )}
         <button
@@ -124,6 +152,22 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
           )}
         </button>
       </div>
+
+      {/* Fixed destinations — stay put above the scrolling space list */}
+      <nav className="flex-shrink-0 pt-2 pb-1 space-y-0.5 border-b border-gray-800">
+        <NavItem to="/" label="Dashboard" collapsed={collapsed} exact>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        </NavItem>
+        <NavItem to="/calendar" label="Calendar" collapsed={collapsed}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </NavItem>
+      </nav>
 
       {/* Spaces list */}
       <div className="flex-1 overflow-y-auto py-2">

@@ -28,6 +28,14 @@ export default function AppShell({ children }: AppShellProps) {
     return () => window.removeEventListener('kb:page', handler as EventListener)
   }, [])
 
+  // Reload the space list on demand — fired by routes that can create a space
+  // without going through the sidebar (e.g. the calendar's first day note).
+  useEffect(() => {
+    const handler = () => setSidebarRefresh((n) => n + 1)
+    window.addEventListener('kb:sidebar-refresh', handler)
+    return () => window.removeEventListener('kb:sidebar-refresh', handler)
+  }, [])
+
   const handlePageCreated = () => {
     setSidebarRefresh((n) => n + 1)
   }

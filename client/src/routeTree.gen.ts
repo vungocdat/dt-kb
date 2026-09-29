@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AuthIndexRouteImport } from './routes/_auth/index'
 import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
+import { Route as AuthCalendarRouteImport } from './routes/_auth/calendar'
 import { Route as AuthPagesPageIdRouteImport } from './routes/_auth/pages/$pageId'
 
 const LoginRoute = LoginRouteImport.update({
@@ -34,6 +35,11 @@ const AuthSettingsRoute = AuthSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthCalendarRoute = AuthCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthPagesPageIdRoute = AuthPagesPageIdRouteImport.update({
   id: '/pages/$pageId',
   path: '/pages/$pageId',
@@ -43,11 +49,13 @@ const AuthPagesPageIdRoute = AuthPagesPageIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/login': typeof LoginRoute
+  '/calendar': typeof AuthCalendarRoute
   '/settings': typeof AuthSettingsRoute
   '/pages/$pageId': typeof AuthPagesPageIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/calendar': typeof AuthCalendarRoute
   '/settings': typeof AuthSettingsRoute
   '/': typeof AuthIndexRoute
   '/pages/$pageId': typeof AuthPagesPageIdRoute
@@ -56,19 +64,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
+  '/_auth/calendar': typeof AuthCalendarRoute
   '/_auth/settings': typeof AuthSettingsRoute
   '/_auth/': typeof AuthIndexRoute
   '/_auth/pages/$pageId': typeof AuthPagesPageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/settings' | '/pages/$pageId'
+  fullPaths: '/' | '/login' | '/calendar' | '/settings' | '/pages/$pageId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/settings' | '/' | '/pages/$pageId'
+  to: '/login' | '/calendar' | '/settings' | '/' | '/pages/$pageId'
   id:
     | '__root__'
     | '/_auth'
     | '/login'
+    | '/_auth/calendar'
     | '/_auth/settings'
     | '/_auth/'
     | '/_auth/pages/$pageId'
@@ -109,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/calendar': {
+      id: '/_auth/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthCalendarRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/pages/$pageId': {
       id: '/_auth/pages/$pageId'
       path: '/pages/$pageId'
@@ -120,12 +137,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteChildren {
+  AuthCalendarRoute: typeof AuthCalendarRoute
   AuthSettingsRoute: typeof AuthSettingsRoute
   AuthIndexRoute: typeof AuthIndexRoute
   AuthPagesPageIdRoute: typeof AuthPagesPageIdRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthCalendarRoute: AuthCalendarRoute,
   AuthSettingsRoute: AuthSettingsRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthPagesPageIdRoute: AuthPagesPageIdRoute,

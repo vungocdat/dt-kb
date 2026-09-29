@@ -257,8 +257,8 @@ function Calendar() {
     // Below xl the panes stack and the page scrolls; from xl up the row fills
     // the shell exactly and each pane scrolls on its own.
     <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-6 p-4 sm:p-6 overflow-y-auto xl:overflow-hidden">
-      {/* ── Month grid: grows with the window, capped so cells stay sane on ultra-wide ── */}
-      <div className="flex flex-col min-h-0 min-w-0 flex-1 xl:max-w-[68rem]">
+      {/* ── Month grid: the larger (3:2) share beside the note, capped so cells stay sane on ultra-wide ── */}
+      <div className="flex flex-col min-h-0 min-w-0 flex-1 xl:flex-[3] xl:max-w-[68rem]">
         <div className="flex items-center gap-2 mb-4 flex-shrink-0">
           <div className="min-w-0">
             <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-100">
@@ -370,18 +370,18 @@ function Calendar() {
       </div>
 
       {/* ── Selected day's note ── */}
-      <section className="flex flex-col min-w-0 min-h-0 flex-none xl:flex-[2] h-[32rem] xl:h-auto bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-        <header className="flex items-center gap-2 px-4 h-14 flex-shrink-0 border-b border-gray-800">
+      <section className="flex flex-col min-w-0 min-h-0 flex-none xl:flex-[2] xl:min-w-[22rem] h-[32rem] xl:h-auto bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <header className="flex items-center gap-2 px-4 py-2.5 min-h-14 flex-shrink-0 border-b border-gray-800">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-gray-200 truncate">
+              <h2 className="text-sm font-semibold text-gray-200">
                 {formatLongDate(selected)}
               </h2>
               {selected === todayISO && (
                 <span className="text-xs text-blue-400 flex-shrink-0">Today</span>
               )}
             </div>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-gray-500">
               {selectedLunar.full}
               {' · '}ngày {selectedLunar.dayCanChi}, tháng {selectedLunar.monthCanChi}
               {selectedLunar.festivalFull && (
@@ -455,9 +455,9 @@ function Calendar() {
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto">
             {note.contentHtml ? (
-              <MarkdownRenderer html={note.contentHtml} />
+              <MarkdownRenderer html={note.contentHtml} compact />
             ) : (
-              <p className="px-8 py-6 text-sm text-gray-500">
+              <p className="px-5 py-4 text-sm text-gray-500">
                 This note is empty. Press Edit (or {shortcut('E')}) to write something.
               </p>
             )}

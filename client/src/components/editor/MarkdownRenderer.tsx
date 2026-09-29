@@ -3,9 +3,11 @@ import { parseHeadings } from './tocUtils'
 
 interface MarkdownRendererProps {
   html: string
+  /** Smaller type and padding, for narrow panes like the calendar note. */
+  compact?: boolean
 }
 
-export function MarkdownRenderer({ html }: MarkdownRendererProps) {
+export function MarkdownRenderer({ html, compact = false }: MarkdownRendererProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
     <div
       ref={ref}
       // max-w-3xl keeps prose lines at a readable ~75 characters on wide screens
-      className="prose prose-invert max-w-3xl mx-auto px-8 py-6"
+      className={`prose prose-invert max-w-3xl mx-auto ${compact ? 'prose-sm prose-h1:text-xl prose-h2:text-lg px-5 py-4' : 'px-8 py-6'}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

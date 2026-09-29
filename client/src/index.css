@@ -21,6 +21,24 @@
   --color-gray-800: var(--kb-gray-800);
   --color-gray-900: var(--kb-gray-900);
   --color-gray-950: var(--kb-gray-950);
+
+  /* Accents: blue (primary / focus / selection), red (danger / errors),
+     green (success). Same trick as gray — the stock Tailwind shades are
+     too saturated for the soft neutrals, so they point at --kb-* below. */
+  --color-blue-300: var(--kb-blue-300);
+  --color-blue-400: var(--kb-blue-400);
+  --color-blue-500: var(--kb-blue-500);
+  --color-blue-600: var(--kb-blue-600);
+  --color-blue-700: var(--kb-blue-700);
+  --color-blue-800: var(--kb-blue-800);
+  --color-red-300: var(--kb-red-300);
+  --color-red-400: var(--kb-red-400);
+  --color-red-500: var(--kb-red-500);
+  --color-red-800: var(--kb-red-800);
+  --color-red-900: var(--kb-red-900);
+  --color-green-400: var(--kb-green-400);
+  --color-green-800: var(--kb-green-800);
+  --color-green-900: var(--kb-green-900);
 }
 
 /* Soft dark theme — Mantine/Docmost-inspired neutrals.
@@ -42,43 +60,43 @@
   --kb-gray-800: #25262b; /* surfaces / sidebar / cards / inputs */
   --kb-gray-900: #1e1f22; /* app chrome (topbar) */
   --kb-gray-950: #181818; /* app background */
+
+  /* Mantine-style accents, a step softer than Tailwind's defaults */
+  --kb-blue-300: #a5d8ff; /* light accent text / headings */
+  --kb-blue-400: #74c0fc; /* accent text: active tree row, TOC, links */
+  --kb-blue-500: #339af0; /* focus rings, accent borders, tints */
+  --kb-blue-600: #1c7ed6; /* primary button */
+  --kb-blue-700: #1971c2;
+  --kb-blue-800: #1864ab; /* disabled primary */
+  --kb-red-300: #ffa8a8;
+  --kb-red-400: #ff8787; /* danger text / hover */
+  --kb-red-500: #fa5252; /* error borders / rings */
+  --kb-red-800: #8f2d2d; /* error box border */
+  --kb-red-900: #5c1f1f; /* danger tints (used at /20–/30) */
+  --kb-green-400: #69db7c; /* success text */
+  --kb-green-800: #2b6a3a; /* success box border */
+  --kb-green-900: #1d4428; /* success tint */
 }
 
 /* Prose overrides for rendered markdown */
 .prose pre {
+  position: relative; /* anchors the .kb-copy-btn */
   padding: 0;
   background: transparent;
 }
 
-/* Heading colors — brighter than body text and tinted per level so the
-   start of each subsection is easy to spot when scanning a long page.
-   Body text is ~#cdced2; headings climb toward white with a cool tint. */
-.prose :where(h1, h2, h3, h4, h5, h6) {
-  color: #f4f5f7;
+/* Heading colors — one soft accent for the two section levels, near-white
+   for the rest; size, weight and the h1/h2 rule carry the hierarchy. */
+.prose :where(h1, h2) {
+  color: var(--kb-blue-300);
 }
 
-.prose :where(h1) {
-  color: #f2c97d; /* amber — page title */
-}
-
-.prose :where(h2) {
-  color: #7fb0ff; /* blue — top-level subsections */
-}
-
-.prose :where(h3) {
-  color: #5fd3b2; /* teal */
-}
-
-.prose :where(h4) {
-  color: #c79cf0; /* purple */
-}
-
-.prose :where(h5) {
-  color: #f29ec4; /* pink */
+.prose :where(h3, h4, h5) {
+  color: var(--kb-gray-50);
 }
 
 .prose :where(h6) {
-  color: #a6b0bb; /* muted gray */
+  color: var(--kb-gray-300);
 }
 
 /* Underline rule under h1/h2 to reinforce section boundaries */
@@ -105,4 +123,44 @@
   background: var(--kb-gray-800);
   border: 1px solid var(--kb-gray-700);
   border-radius: 0.5rem;
+}
+
+/* Copy button injected into each code block by MarkdownRenderer. Shown on
+   hover, and whenever it has keyboard focus so it's reachable without a mouse. */
+.kb-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--kb-gray-300);
+  background: var(--kb-gray-700);
+  border: 1px solid var(--kb-gray-600);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.prose pre:hover .kb-copy-btn,
+.kb-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.kb-copy-btn:hover {
+  color: var(--kb-gray-50);
+}
+
+.kb-copy-btn:focus-visible {
+  outline: 1px solid var(--kb-blue-500);
+}
+
+.kb-copy-btn[data-state='copied'] {
+  color: var(--kb-green-400);
+}
+
+.kb-copy-btn[data-state='failed'] {
+  color: var(--kb-red-400);
 }

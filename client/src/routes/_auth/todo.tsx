@@ -148,7 +148,7 @@ function TodoList() {
           <button
             type="submit"
             disabled={!newTitle.trim() || adding}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-gray-50 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Add
           </button>
@@ -274,7 +274,7 @@ function TodoItem({ todo, onToggle, onTogglePin, onRename, onDelete }: TodoItemP
         }`}
       >
         {todo.done && (
-          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-2.5 h-2.5 text-gray-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         )}

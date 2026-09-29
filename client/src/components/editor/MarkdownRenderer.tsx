@@ -22,35 +22,12 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
     container.querySelectorAll('pre').forEach((pre) => {
       if (pre.querySelector('.kb-copy-btn')) return
 
-      pre.style.position = 'relative'
-
+      // Styling and hover/focus visibility live in index.css (.kb-copy-btn)
       const btn = document.createElement('button')
       btn.className = 'kb-copy-btn'
       btn.textContent = 'Copy'
       btn.setAttribute('aria-label', 'Copy code to clipboard')
-      btn.style.cssText = [
-        'position:absolute',
-        'top:8px',
-        'right:8px',
-        'padding:2px 10px',
-        'font-size:11px',
-        'font-family:inherit',
-        'background:rgba(55,65,81,0.9)',
-        'color:#9ca3af',
-        'border:1px solid rgba(75,85,99,0.6)',
-        'border-radius:4px',
-        'cursor:pointer',
-        'opacity:0',
-        'transition:opacity 0.15s,color 0.15s',
-        'z-index:10',
-      ].join(';')
-
       pre.appendChild(btn)
-
-      const show = () => { btn.style.opacity = '1' }
-      const hide = () => { btn.style.opacity = '0' }
-      pre.addEventListener('mouseenter', show)
-      pre.addEventListener('mouseleave', hide)
 
       btn.addEventListener('click', async (e) => {
         e.stopPropagation()
@@ -58,14 +35,14 @@ export function MarkdownRenderer({ html }: MarkdownRendererProps) {
         try {
           await navigator.clipboard.writeText(text)
           btn.textContent = 'Copied!'
-          btn.style.color = '#86efac'
+          btn.dataset.state = 'copied'
         } catch {
           btn.textContent = 'Failed'
-          btn.style.color = '#fca5a5'
+          btn.dataset.state = 'failed'
         }
         setTimeout(() => {
           btn.textContent = 'Copy'
-          btn.style.color = '#9ca3af'
+          delete btn.dataset.state
         }, 2000)
       })
     })

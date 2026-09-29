@@ -182,7 +182,7 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
             title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (Ctrl+E)`}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
               currentMode === 'edit'
-                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                ? 'bg-blue-600 text-gray-50 hover:bg-blue-500'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-gray-100'
             }`}
           >

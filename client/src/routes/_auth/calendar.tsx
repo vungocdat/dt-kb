@@ -333,7 +333,7 @@ function Calendar() {
                 <span
                   className={`text-xs 2xl:text-sm leading-5 w-5 h-5 2xl:w-7 2xl:h-7 flex items-center justify-center rounded-full ${
                     isToday
-                      ? 'bg-blue-600 text-white font-semibold'
+                      ? 'bg-blue-600 text-gray-50 font-semibold'
                       : inMonth
                       ? 'text-gray-300'
                       : 'text-gray-600'
@@ -392,7 +392,7 @@ function Calendar() {
                 title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (Ctrl+E)`}
                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                   currentMode === 'edit'
-                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    ? 'bg-blue-600 text-gray-50 hover:bg-blue-500'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-gray-100'
                 }`}
               >
@@ -443,7 +443,7 @@ function Calendar() {
             <button
               onClick={() => void createNote(selected)}
               disabled={creating}
-              className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-gray-50 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {creating ? 'Creating…' : 'Create note'}
             </button>

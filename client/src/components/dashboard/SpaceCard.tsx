@@ -35,7 +35,7 @@ export default function SpaceCard({ space }: SpaceCardProps) {
           {space.icon || '📁'}
         </span>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-gray-100 group-hover:text-white truncate">
+          <h3 className="text-sm font-semibold text-gray-100 group-hover:text-gray-50 truncate">
             {space.name}
           </h3>
           {space.description && (

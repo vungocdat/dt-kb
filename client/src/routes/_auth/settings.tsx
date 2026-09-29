@@ -190,7 +190,7 @@ function ChangeUsernameCard() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-50 text-sm font-medium rounded-md transition-colors"
         >
           {saving ? 'Saving…' : 'Update username'}
         </button>
@@ -339,7 +339,7 @@ function ChangePasswordCard() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-50 text-sm font-medium rounded-md transition-colors"
             >
               {saving ? 'Saving…' : 'Update password'}
             </button>

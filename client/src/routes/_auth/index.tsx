@@ -32,7 +32,7 @@ function Dashboard() {
 
   return (
     <div className="flex-1 overflow-y-auto px-8 py-8 max-w-5xl mx-auto w-full">
-      <h1 className="text-2xl font-bold text-gray-100 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-100 mb-6">Knowledge base</h1>
 
       {/* Spaces */}
       <section className="mb-10">

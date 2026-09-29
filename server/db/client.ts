@@ -39,7 +39,7 @@ export const db: BetterSQLite3Database<typeof schema> = drizzle(sqlite, { schema
 
 /**
  * Apply PRAGMAs and create the runtime-managed tables: the FTS5 virtual table
- * with its sync triggers, and calendar_notes. Idempotent.
+ * with its sync triggers, calendar_notes and todos. Idempotent.
  * Call AFTER migrations have created the base tables.
  */
 export function initializeDb(): void {
@@ -61,6 +61,20 @@ export function initializeDb(): void {
       content_html TEXT NOT NULL DEFAULT '',
       created_at   INTEGER NOT NULL,
       updated_at   INTEGER NOT NULL
+    );
+
+    -- todos: the To-do tab's storage, a flat list unrelated to pages and to
+    -- the calendar. done is 0/1; completed_at is set while done so finished
+    -- items can be listed most-recent first. Runtime-created for the same
+    -- reason as calendar_notes.
+    CREATE TABLE IF NOT EXISTS todos (
+      id           TEXT PRIMARY KEY,
+      title        TEXT NOT NULL,
+      done         INTEGER NOT NULL DEFAULT 0,
+      sort_order   INTEGER NOT NULL,
+      created_at   INTEGER NOT NULL,
+      updated_at   INTEGER NOT NULL,
+      completed_at INTEGER
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(

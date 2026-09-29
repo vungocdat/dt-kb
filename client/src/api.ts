@@ -259,6 +259,43 @@ export async function deleteCalendarNote(date: string): Promise<void> {
   return apiFetch<void>(`/api/calendar/notes/${date}`, { method: 'DELETE' })
 }
 
+// ── To-do ─────────────────────────────────────────────────────────────────────
+
+/** A task in the To-do tab — standalone, unrelated to pages and the calendar. */
+export interface Todo {
+  id: string
+  title: string
+  done: boolean
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+  completedAt: number | null
+}
+
+/** Every task: open ones in list order, then finished ones, most recent first. */
+export async function getTodos(): Promise<Todo[]> {
+  return apiFetch<Todo[]>('/api/todos')
+}
+
+export async function createTodo(title: string): Promise<Todo> {
+  return apiFetch<Todo>('/api/todos', { method: 'POST', body: JSON.stringify({ title }) })
+}
+
+export async function updateTodo(
+  id: string,
+  data: { title?: string; done?: boolean },
+): Promise<Todo> {
+  return apiFetch<Todo>(`/api/todos/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
+
+export async function deleteTodo(id: string): Promise<void> {
+  return apiFetch<void>(`/api/todos/${id}`, { method: 'DELETE' })
+}
+
+export async function clearCompletedTodos(): Promise<void> {
+  await apiFetch<{ deleted: number }>('/api/todos/completed', { method: 'DELETE' })
+}
+
 // ── Search ────────────────────────────────────────────────────────────────────
 
 export async function search(

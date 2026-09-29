@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
 import { getSpaces, createSpace, importSpace, updateSpace, type Space } from '../../api'
 import SpaceSection from './SpaceSection'
@@ -12,26 +12,27 @@ interface SidebarProps {
 }
 
 interface NavItemProps {
-  to: '/' | '/calendar'
+  to: '/' | '/calendar' | '/todo'
   label: string
   collapsed: boolean
-  /** Exact match — needed for '/', which would otherwise match every route. */
-  exact?: boolean
+  /** Computed from the pathname, so a tab can own more than one route. */
+  active: boolean
   children: React.ReactNode
 }
 
-/** A fixed top-level destination (not a space) in the sidebar nav. */
-function NavItem({ to, label, collapsed, exact, children }: NavItemProps) {
+/** A top-level tab in the sidebar nav. */
+function NavItem({ to, label, collapsed, active, children }: NavItemProps) {
   return (
     <Link
       to={to}
-      activeOptions={exact ? { exact: true } : undefined}
       title={collapsed ? label : undefined}
       aria-label={label}
-      className={`flex items-center gap-2 rounded mx-1 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors ${
-        collapsed ? 'justify-center px-2' : ''
-      }`}
-      activeProps={{ className: 'bg-gray-800 text-gray-100 font-medium' }}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-2 rounded mx-1 px-3 py-1.5 text-sm transition-colors ${
+        active
+          ? 'bg-gray-800 text-gray-100 font-medium'
+          : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'
+      } ${collapsed ? 'justify-center px-2' : ''}`}
     >
       <span className="flex-shrink-0 text-gray-400">{children}</span>
       {!collapsed && <span className="truncate">{label}</span>}
@@ -41,6 +42,10 @@ function NavItem({ to, label, collapsed, exact, children }: NavItemProps) {
 
 export default function Sidebar({ collapsed, refreshKey, onPageCreated }: SidebarProps) {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  // The Knowledge base tab owns its landing page and every page route; only
+  // there does the sidebar show the space tree.
+  const inKnowledgeBase = pathname === '/' || pathname.startsWith('/pages/')
   const [spaces, setSpaces] = useState<Space[]>([])
   const [loading, setLoading] = useState(true)
   const [creatingSpace, setCreatingSpace] = useState(false)
@@ -155,125 +160,137 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
 
       {/* Fixed destinations — stay put above the scrolling space list */}
       <nav className="flex-shrink-0 pt-2 pb-1 space-y-0.5 border-b border-gray-800">
-        <NavItem to="/" label="Dashboard" collapsed={collapsed} exact>
+        <NavItem to="/" label="Knowledge base" collapsed={collapsed} active={inKnowledgeBase}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
         </NavItem>
-        <NavItem to="/calendar" label="Calendar" collapsed={collapsed}>
+        <NavItem to="/calendar" label="Calendar" collapsed={collapsed} active={pathname === '/calendar'}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </NavItem>
+        <NavItem to="/todo" label="To-do" collapsed={collapsed} active={pathname === '/todo'}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </NavItem>
       </nav>
 
-      {/* Spaces list */}
-      <div className="flex-1 overflow-y-auto py-2">
-        {loading ? (
-          <div className="space-y-2 px-3 mt-2">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-5/6" />
-            <Skeleton className="h-6 w-4/6" />
-          </div>
-        ) : (
-          [...spaces]
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((space) => (
-              <div
-                key={space.id}
-                draggable
-                onDragStart={(e) => {
-                  e.stopPropagation()
-                  setDraggedSpaceId(space.id)
-                }}
-                onDragEnd={() => {
-                  setDraggedSpaceId(null)
-                  setDragOverSpaceId(null)
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setDragOverSpaceId(space.id)
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  void handleSpaceDrop(space.id)
-                }}
-                className={`border-t-2 transition-opacity ${dragOverSpaceId === space.id ? 'border-blue-500' : 'border-transparent'} ${draggedSpaceId === space.id ? 'opacity-40' : ''}`}
-              >
-                <SpaceSection
-                  space={space}
-                  collapsed={collapsed}
-                  onPageCreated={onPageCreated}
-                  onSpaceUpdated={(updated) =>
-                    setSpaces((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
-                  }
-                  onSpaceDeleted={(id) =>
-                    setSpaces((prev) => prev.filter((s) => s.id !== id))
-                  }
-                />
+      {inKnowledgeBase ? (
+        <>
+          {/* Spaces list */}
+          <div className="flex-1 overflow-y-auto py-2">
+            {loading ? (
+              <div className="space-y-2 px-3 mt-2">
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-5/6" />
+                <Skeleton className="h-6 w-4/6" />
               </div>
-            ))
-        )}
-      </div>
+            ) : (
+              [...spaces]
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .map((space) => (
+                  <div
+                    key={space.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation()
+                      setDraggedSpaceId(space.id)
+                    }}
+                    onDragEnd={() => {
+                      setDraggedSpaceId(null)
+                      setDragOverSpaceId(null)
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDragOverSpaceId(space.id)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      void handleSpaceDrop(space.id)
+                    }}
+                    className={`border-t-2 transition-opacity ${dragOverSpaceId === space.id ? 'border-blue-500' : 'border-transparent'} ${draggedSpaceId === space.id ? 'opacity-40' : ''}`}
+                  >
+                    <SpaceSection
+                      space={space}
+                      collapsed={collapsed}
+                      onPageCreated={onPageCreated}
+                      onSpaceUpdated={(updated) =>
+                        setSpaces((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+                      }
+                      onSpaceDeleted={(id) =>
+                        setSpaces((prev) => prev.filter((s) => s.id !== id))
+                      }
+                    />
+                  </div>
+                ))
+            )}
+          </div>
 
-      {/* New space */}
-      {!collapsed && (
-        <div className="border-t border-gray-800 p-3 flex-shrink-0">
-          {creatingSpace ? (
-            <input
-              autoFocus
-              type="text"
-              value={newSpaceName}
-              onChange={(e) => setNewSpaceName(e.target.value)}
-              onKeyDown={handleNewSpaceKeyDown}
-              onBlur={() => {
-                if (!newSpaceName.trim()) {
-                  setCreatingSpace(false)
-                }
-              }}
-              placeholder="Space name…"
-              className="w-full px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          ) : (
-            <button
-              onClick={() => setCreatingSpace(true)}
-              className="w-full flex items-center gap-2 text-sm text-gray-400 hover:text-gray-100 hover:bg-gray-800 px-2 py-1.5 rounded transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Space
-            </button>
+          {/* New space */}
+          {!collapsed && (
+            <div className="border-t border-gray-800 p-3 flex-shrink-0">
+              {creatingSpace ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={newSpaceName}
+                  onChange={(e) => setNewSpaceName(e.target.value)}
+                  onKeyDown={handleNewSpaceKeyDown}
+                  onBlur={() => {
+                    if (!newSpaceName.trim()) {
+                      setCreatingSpace(false)
+                    }
+                  }}
+                  placeholder="Space name…"
+                  className="w-full px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              ) : (
+                <button
+                  onClick={() => setCreatingSpace(true)}
+                  className="w-full flex items-center gap-2 text-sm text-gray-400 hover:text-gray-100 hover:bg-gray-800 px-2 py-1.5 rounded transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New Space
+                </button>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* Import space */}
-      {!collapsed && (
-        <div className="px-3 py-2 border-t border-gray-800 flex-shrink-0">
-          <button
-            onClick={() => importSpaceInputRef.current?.click()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded transition-colors"
-            title="Import space from ZIP"
-          >
-            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
-            </svg>
-            Import Space
-          </button>
-          <input
-            ref={importSpaceInputRef}
-            type="file"
-            accept=".zip,application/zip"
-            className="hidden"
-            onChange={(e) => void handleImportSpace(e)}
-          />
-        </div>
+          {/* Import space */}
+          {!collapsed && (
+            <div className="px-3 py-2 border-t border-gray-800 flex-shrink-0">
+              <button
+                onClick={() => importSpaceInputRef.current?.click()}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded transition-colors"
+                title="Import space from ZIP"
+              >
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                Import Space
+              </button>
+              <input
+                ref={importSpaceInputRef}
+                type="file"
+                accept=".zip,application/zip"
+                className="hidden"
+                onChange={(e) => void handleImportSpace(e)}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex-1" />
       )}
     </div>
   )

@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   const { spacesRouter } = await import('./routes/spaces.js');
   const { pagesRouter } = await import('./routes/pages.js');
   const { searchRouter } = await import('./routes/search.js');
-  const { journalRouter } = await import('./routes/journal.js');
+  const { calendarRouter } = await import('./routes/calendar.js');
 
   const app = new Hono();
 
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   api.route('/spaces', spacesRouter);
   api.route('/pages', pagesRouter);
   api.route('/search', searchRouter);
-  api.route('/journal', journalRouter);
+  api.route('/calendar', calendarRouter);
 
   app.route('/api', api);
 

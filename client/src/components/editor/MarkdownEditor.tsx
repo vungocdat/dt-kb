@@ -5,25 +5,27 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView } from '@codemirror/view'
-import { updatePage, type Page } from '../../api'
 import { useUIStore } from '../../store'
 
 interface MarkdownEditorProps {
-  pageId: string
   initialContent: string
   initialScrollFraction?: number
   scrollFractionRef?: React.MutableRefObject<number>
-  onPageUpdate: (page: Page) => void
+  /**
+   * Persists the debounced content. Save status, the debounce and the
+   * out-of-order guard are handled here; what "save" means is the caller's
+   * business — a page PATCH, a calendar-note PUT, anything else.
+   */
+  onSave: (content: string) => Promise<void>
 }
 
 const DEBOUNCE_MS = 800 // Must remain 800ms — project constraint
 
 export default function MarkdownEditor({
-  pageId,
   initialContent,
   initialScrollFraction = 0,
   scrollFractionRef,
-  onPageUpdate,
+  onSave,
 }: MarkdownEditorProps) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -55,9 +57,8 @@ export default function MarkdownEditor({
       const seq = ++saveSeq.current
       setSaveStatus('saving')
       try {
-        const updated = await updatePage(pageId, { content })
+        await onSave(content)
         if (seq !== saveSeq.current) return
-        onPageUpdate(updated)
         setSaveStatus('saved')
         // Reset to idle after 2 seconds
         setTimeout(() => setSaveStatus('idle'), 2000)
@@ -66,7 +67,7 @@ export default function MarkdownEditor({
         setSaveStatus('error')
       }
     },
-    [pageId, setSaveStatus, onPageUpdate],
+    [setSaveStatus, onSave],
   )
 
   const saveRef = useRef(save)

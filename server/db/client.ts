@@ -39,7 +39,7 @@ export const db: BetterSQLite3Database<typeof schema> = drizzle(sqlite, { schema
 
 /**
  * Apply PRAGMAs and create the runtime-managed tables: the FTS5 virtual table
- * with its sync triggers, and app_settings. Idempotent.
+ * with its sync triggers, and calendar_notes. Idempotent.
  * Call AFTER migrations have created the base tables.
  */
 export function initializeDb(): void {
@@ -49,13 +49,18 @@ export function initializeDb(): void {
   sqlite.pragma('busy_timeout = 5000');
 
   sqlite.exec(`
-    -- app_settings: single-row-per-key store for app state that isn't page data
-    -- (currently only journal_space_id). Created here rather than via a Drizzle
-    -- migration so existing databases pick it up on restart without a manual
+    -- calendar_notes: the calendar's own storage, deliberately unrelated to
+    -- pages. One note per calendar date, keyed by the date itself — no space,
+    -- no parent, no FK, and no FTS triggers: nothing here shows up in the page
+    -- tree or in search. Created at runtime (not via a Drizzle migration) so
+    -- existing databases pick it up on restart without a manual
     -- "drizzle-kit push" — same reasoning as pages_fts below.
-    CREATE TABLE IF NOT EXISTS app_settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
+    CREATE TABLE IF NOT EXISTS calendar_notes (
+      date         TEXT PRIMARY KEY,
+      content      TEXT NOT NULL DEFAULT '',
+      content_html TEXT NOT NULL DEFAULT '',
+      created_at   INTEGER NOT NULL,
+      updated_at   INTEGER NOT NULL
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(

@@ -48,24 +48,17 @@ export default function SpaceSection({
     }
   }
 
-  // Refetch this space's tree when something outside the sidebar changed it:
-  // kb:page-deleted (a delete, or the source side of a cross-space move) and
-  // kb:tree-refresh (a page created elsewhere, e.g. a calendar day note).
   useEffect(() => {
     const handler = async (e: Event) => {
-      const { spaceId } = (e as CustomEvent<{ spaceId: string }>).detail
-      if (spaceId !== space.id) return
+      const { spaceId: deletedSpaceId } = (e as CustomEvent<{ spaceId: string }>).detail
+      if (deletedSpaceId !== space.id) return
       try {
         const data = await getSpaceTree(space.id)
         setTree(data)
       } catch {}
     }
     window.addEventListener('kb:page-deleted', handler as EventListener)
-    window.addEventListener('kb:tree-refresh', handler as EventListener)
-    return () => {
-      window.removeEventListener('kb:page-deleted', handler as EventListener)
-      window.removeEventListener('kb:tree-refresh', handler as EventListener)
-    }
+    return () => window.removeEventListener('kb:page-deleted', handler as EventListener)
   }, [space.id])
 
   const startRenaming = (e: React.MouseEvent) => {

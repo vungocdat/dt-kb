@@ -47,25 +47,22 @@ export interface SearchResult {
   snippet: string
 }
 
-/** A day note that already exists, keyed by its ISO date title. */
-export interface JournalDay {
+/**
+ * A calendar note. Calendar notes are NOT pages — they live in their own table,
+ * keyed by date, and never appear in the sidebar tree or in search.
+ */
+export interface CalendarNote {
   date: string
-  pageId: string
+  content: string
+  contentHtml: string
+  createdAt: number
+  updatedAt: number
 }
 
-export interface JournalMonth {
-  spaceId: string | null
-  spaceName: string | null
-  days: JournalDay[]
-  /** Every page edited in the requested window — bucketed by local date client-side. */
-  activity: RecentPage[]
-}
-
-export interface JournalDayRef {
-  pageId: string
-  spaceId: string
-  spaceCreated: boolean
-  created: boolean
+/** Marker for a day that has a note, used by the month grid. */
+export interface CalendarNoteStub {
+  date: string
+  updatedAt: number
 }
 
 // ── Base fetch ────────────────────────────────────────────────────────────────
@@ -224,35 +221,42 @@ export async function movePage(
   })
 }
 
-// ── Journal ───────────────────────────────────────────────────────────────────
+// ── Calendar ──────────────────────────────────────────────────────────────────
 
-/**
- * One request per calendar view. `from`/`to` are the ISO dates of the first and
- * last visible cell; `startTs`/`endTs` are the matching *local* epoch bounds
- * (endTs exclusive). Both are sent because the server deliberately doesn't guess
- * the browser's UTC offset — see server/routes/journal.ts.
- */
-export async function getJournalMonth(
+/** Which days in the visible range have a note. ISO dates are the client's local ones. */
+export async function getCalendarNotes(
   from: string,
   to: string,
-  startTs: number,
-  endTs: number,
-): Promise<JournalMonth> {
-  const params = new URLSearchParams({
-    from,
-    to,
-    startTs: String(startTs),
-    endTs: String(endTs),
-  })
-  return apiFetch<JournalMonth>(`/api/journal/month?${params.toString()}`)
+): Promise<CalendarNoteStub[]> {
+  const params = new URLSearchParams({ from, to })
+  return apiFetch<CalendarNoteStub[]>(`/api/calendar/notes?${params.toString()}`)
 }
 
-/** Open (creating on first use) the day note for an ISO date. */
-export async function openJournalDay(date: string): Promise<JournalDayRef> {
-  return apiFetch<JournalDayRef>('/api/journal/day', {
-    method: 'POST',
-    body: JSON.stringify({ date }),
+/** One day's note, or null when that day has none (404 is the normal empty case). */
+export async function getCalendarNote(date: string): Promise<CalendarNote | null> {
+  const res = await fetch(`/api/calendar/notes/${date}`, { credentials: 'include' })
+  if (res.status === 401) {
+    window.location.href = '/login'
+    return new Promise(() => {})
+  }
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`API ${res.status}`)
+  return res.json() as Promise<CalendarNote>
+}
+
+/** Upsert — serves both "create note" and every auto-save after it. */
+export async function saveCalendarNote(
+  date: string,
+  content: string,
+): Promise<CalendarNote> {
+  return apiFetch<CalendarNote>(`/api/calendar/notes/${date}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
   })
+}
+
+export async function deleteCalendarNote(date: string): Promise<void> {
+  return apiFetch<void>(`/api/calendar/notes/${date}`, { method: 'DELETE' })
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────

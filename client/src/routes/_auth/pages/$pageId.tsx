@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getPage, deletePage, type Page } from '../../../api'
+import { getPage, deletePage, updatePage, type Page } from '../../../api'
 import { useUIStore } from '../../../store'
 import MarkdownEditor from '../../../components/editor/MarkdownEditor'
 import { MarkdownRenderer } from '../../../components/editor/MarkdownRenderer'
@@ -140,11 +140,11 @@ function PageView() {
       {currentMode === 'edit' ? (
         <MarkdownEditor
           key={page.id}
-          pageId={page.id}
           initialContent={savedContentRef.current ?? page.content}
           initialScrollFraction={scrollFractionRef.current}
           scrollFractionRef={scrollFractionRef}
-          onPageUpdate={(updated) => {
+          onSave={async (content) => {
+            const updated = await updatePage(page.id, { content })
             savedContentRef.current = updated.content
             // Merge into prev (never replace): fields the save response may
             // lack (ancestors, spaceName) must survive, or TopBar crashes.

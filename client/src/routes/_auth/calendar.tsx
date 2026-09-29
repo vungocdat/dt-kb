@@ -224,201 +224,207 @@ function Calendar() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8 w-full">
-      <div className="flex flex-col xl:flex-row gap-8 items-start max-w-7xl mx-auto">
-        {/* ── Month grid ── */}
-        <div className="w-full xl:w-[34rem] flex-shrink-0">
-          <div className="flex items-center gap-2 mb-5">
-            <h1 className="text-2xl font-bold text-gray-100">
-              {formatMonthLabel(view.year, view.month)}
-            </h1>
-            <div className="flex-1" />
-            <button
-              onClick={() => goToMonth(view.year, view.month - 1)}
-              aria-label="Previous month"
-              className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-3 py-1 text-xs font-medium rounded bg-gray-700 text-gray-200 hover:bg-gray-600 hover:text-gray-100 transition-colors"
-            >
-              Today
-            </button>
-            <button
-              onClick={() => goToMonth(view.year, view.month + 1)}
-              aria-label="Next month"
-              className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 mb-1">
-            {WEEKDAYS.map((label) => (
-              <div
-                key={label}
-                className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider py-1"
-              >
-                {label}
-              </div>
-            ))}
-          </div>
-
-          <div onKeyDown={handleGridKeyDown} className="grid grid-cols-7 gap-1">
-            {cells.map((cell) => {
-              const iso = toISO(cell)
-              const inMonth = cell.getMonth() === view.month
-              const isToday = iso === todayISO
-              const isSelected = iso === selected
-              const hasNote = noteDates.has(iso)
-
-              return (
-                <button
-                  key={iso}
-                  ref={(el) => {
-                    if (el) cellRefs.current.set(iso, el)
-                    else cellRefs.current.delete(iso)
-                  }}
-                  onClick={() => selectDate(cell)}
-                  aria-label={formatLongDate(iso)}
-                  aria-current={isToday ? 'date' : undefined}
-                  aria-pressed={isSelected}
-                  className={`h-14 flex flex-col items-center justify-center gap-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    isSelected
-                      ? 'border-gray-500 bg-gray-800'
-                      : isToday
-                      ? 'border-blue-500/50 bg-blue-500/5 hover:bg-gray-800'
-                      : 'border-gray-800 hover:bg-gray-800'
-                  }`}
-                >
-                  <span
-                    className={`text-xs leading-5 w-5 h-5 flex items-center justify-center rounded-full ${
-                      isToday
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : inMonth
-                        ? 'text-gray-300'
-                        : 'text-gray-600'
-                    }`}
-                  >
-                    {cell.getDate()}
-                  </span>
-                  {/* Reserve the dot's row either way so cells never jump height */}
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      hasNote && !gridLoading ? 'bg-blue-400' : 'bg-transparent'
-                    }`}
-                  />
-                </button>
-              )
-            })}
-          </div>
+    // Below xl the panes stack and the page scrolls; from xl up the row fills
+    // the shell exactly and each pane scrolls on its own.
+    <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-6 p-4 sm:p-6 overflow-y-auto xl:overflow-hidden">
+      {/* ── Month grid: grows with the window, capped so cells stay sane on ultra-wide ── */}
+      <div className="flex flex-col min-h-0 min-w-0 flex-1 xl:max-w-[68rem]">
+        <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+          <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-100">
+            {formatMonthLabel(view.year, view.month)}
+          </h1>
+          <div className="flex-1" />
+          <button
+            onClick={() => goToMonth(view.year, view.month - 1)}
+            aria-label="Previous month"
+            className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={goToToday}
+            className="px-3 py-1 text-xs font-medium rounded bg-gray-700 text-gray-200 hover:bg-gray-600 hover:text-gray-100 transition-colors"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => goToMonth(view.year, view.month + 1)}
+            aria-label="Next month"
+            className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
-        {/* ── Selected day's note ── */}
-        <section className="w-full flex-1 min-w-0 flex flex-col h-[36rem] bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-          <header className="flex items-center gap-2 px-4 h-12 flex-shrink-0 border-b border-gray-800">
-            <h2 className="text-sm font-semibold text-gray-200 truncate">
-              {formatLongDate(selected)}
-            </h2>
-            {selected === todayISO && (
-              <span className="text-xs text-blue-400 flex-shrink-0">Today</span>
-            )}
-            <div className="flex-1" />
+        <div className="grid grid-cols-7 mb-1 flex-shrink-0">
+          {WEEKDAYS.map((label) => (
+            <div
+              key={label}
+              className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider py-1"
+            >
+              {label}
+            </div>
+          ))}
+        </div>
 
-            {note && !confirmingDelete && (
-              <>
-                <button
-                  onClick={toggleMode}
-                  title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (Ctrl+E)`}
-                  className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                    currentMode === 'edit'
-                      ? 'bg-blue-600 text-white hover:bg-blue-500'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-gray-100'
+        {/* 7 x 6 fixed tracks: the rows split whatever height the pane has, so
+            cell size follows the window instead of a hard-coded h-14. The
+            min-height keeps them usable in the stacked (narrow) layout. */}
+        <div
+          onKeyDown={handleGridKeyDown}
+          className="grid grid-cols-7 grid-rows-6 gap-1 sm:gap-1.5 flex-1 min-h-[19rem] max-h-[54rem]"
+        >
+          {cells.map((cell) => {
+            const iso = toISO(cell)
+            const inMonth = cell.getMonth() === view.month
+            const isToday = iso === todayISO
+            const isSelected = iso === selected
+            const hasNote = noteDates.has(iso)
+
+            return (
+              <button
+                key={iso}
+                ref={(el) => {
+                  if (el) cellRefs.current.set(iso, el)
+                  else cellRefs.current.delete(iso)
+                }}
+                onClick={() => selectDate(cell)}
+                aria-label={formatLongDate(iso)}
+                aria-current={isToday ? 'date' : undefined}
+                aria-pressed={isSelected}
+                className={`h-full w-full min-h-0 flex flex-col items-center justify-center gap-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  isSelected
+                    ? 'border-gray-500 bg-gray-800'
+                    : isToday
+                    ? 'border-blue-500/50 bg-blue-500/5 hover:bg-gray-800'
+                    : 'border-gray-800 hover:bg-gray-800'
+                }`}
+              >
+                <span
+                  className={`text-xs 2xl:text-sm leading-5 w-5 h-5 2xl:w-7 2xl:h-7 flex items-center justify-center rounded-full ${
+                    isToday
+                      ? 'bg-blue-600 text-white font-semibold'
+                      : inMonth
+                      ? 'text-gray-300'
+                      : 'text-gray-600'
                   }`}
                 >
-                  {currentMode === 'edit' ? 'Read' : 'Edit'}
-                </button>
-                <button
-                  onClick={() => setConfirmingDelete(true)}
-                  aria-label="Delete note"
-                  title="Delete note"
-                  className="p-1.5 rounded text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </>
-            )}
+                  {cell.getDate()}
+                </span>
+                {/* Reserve the dot's row either way so cells never jump height */}
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    hasNote && !gridLoading ? 'bg-blue-400' : 'bg-transparent'
+                  }`}
+                />
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-            {confirmingDelete && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-xs text-gray-400">Delete note?</span>
-                <button
-                  onClick={() => void handleDelete()}
-                  className="text-xs text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-900/30"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="text-xs text-gray-400 hover:text-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-700"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </header>
+      {/* ── Selected day's note ── */}
+      <section className="flex flex-col min-w-0 min-h-0 flex-none xl:flex-[2] h-[32rem] xl:h-auto bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <header className="flex items-center gap-2 px-4 h-12 flex-shrink-0 border-b border-gray-800">
+          <h2 className="text-sm font-semibold text-gray-200 truncate">
+            {formatLongDate(selected)}
+          </h2>
+          {selected === todayISO && (
+            <span className="text-xs text-blue-400 flex-shrink-0">Today</span>
+          )}
+          <div className="flex-1" />
 
-          {noteLoading ? (
-            <div className="p-6 space-y-3">
-              <Skeleton className="h-6 w-1/2" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-            </div>
-          ) : !note ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-              <p className="text-sm text-gray-500">No note for this day.</p>
+          {note && !confirmingDelete && (
+            <>
               <button
-                onClick={() => void createNote(selected)}
-                disabled={creating}
-                className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                onClick={toggleMode}
+                title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (Ctrl+E)`}
+                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                  currentMode === 'edit'
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-gray-100'
+                }`}
               >
-                {creating ? 'Creating…' : 'Create note'}
+                {currentMode === 'edit' ? 'Read' : 'Edit'}
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                aria-label="Delete note"
+                title="Delete note"
+                className="p-1.5 rounded text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {confirmingDelete && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs text-gray-400">Delete note?</span>
+              <button
+                onClick={() => void handleDelete()}
+                className="text-xs text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-900/30"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="text-xs text-gray-400 hover:text-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-700"
+              >
+                Cancel
               </button>
             </div>
-          ) : currentMode === 'edit' ? (
-            <MarkdownEditor
-              // Remount per day (and on each entry into edit mode) so the editor
-              // picks up the right document — its value is frozen at mount.
-              key={selected}
-              initialContent={note.content}
-              onSave={async (content) => {
-                const saved = await saveCalendarNote(selected, content)
-                setNote(saved)
-                markHasNote(selected, true)
-              }}
-            />
-          ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              {note.contentHtml ? (
-                <MarkdownRenderer html={note.contentHtml} />
-              ) : (
-                <p className="px-8 py-6 text-sm text-gray-500">
-                  This note is empty. Press Edit (or Ctrl+E) to write something.
-                </p>
-              )}
-            </div>
           )}
-        </section>
-      </div>
+        </header>
+
+        {noteLoading ? (
+          <div className="p-6 space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        ) : !note ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <p className="text-sm text-gray-500">No note for this day.</p>
+            <button
+              onClick={() => void createNote(selected)}
+              disabled={creating}
+              className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {creating ? 'Creating…' : 'Create note'}
+            </button>
+          </div>
+        ) : currentMode === 'edit' ? (
+          <MarkdownEditor
+            // Remount per day (and on each entry into edit mode) so the editor
+            // picks up the right document — its value is frozen at mount.
+            key={selected}
+            initialContent={note.content}
+            onSave={async (content) => {
+              const saved = await saveCalendarNote(selected, content)
+              setNote(saved)
+              markHasNote(selected, true)
+            }}
+          />
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {note.contentHtml ? (
+              <MarkdownRenderer html={note.contentHtml} />
+            ) : (
+              <p className="px-8 py-6 text-sm text-gray-500">
+                This note is empty. Press Edit (or Ctrl+E) to write something.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

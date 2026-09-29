@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { getSpaceTree, createPage, deletePage, updatePage, movePage, type PageTreeNode } from '../../api'
 import { dragState } from './dragState'
+import { confirmDialog } from '../ui/ConfirmDialog'
+import { toast } from '../ui/Toaster'
+import { ICON_PLUS, ICON_TRASH } from '../ui/icons'
 
 interface PageTreeProps {
   spaceId: string
@@ -94,6 +97,7 @@ export default function PageTree({
       await Promise.all(moves.map((m) => movePage(m.id, { parentId: m.parentId, sortOrder: m.sortOrder })))
     } catch {
       // Rollback: reload the tree from the server
+      toast.error('Could not move the page.')
       try {
         const fresh = await getSpaceTree(spaceId)
         onTreeLoaded(fresh)
@@ -262,7 +266,7 @@ function PageTreeItem({
   )
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const navigate = useNavigate()
   const renameInputRef = useRef<HTMLInputElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
 
@@ -310,7 +314,8 @@ function PageTreeItem({
       await updatePage(node.id, { title })
       onTreeLoaded(tree.map((n) => (n.id === node.id ? { ...n, title } : n)))
     } catch {
-      // silently revert — node.title prop is unchanged
+      // node.title prop is unchanged, so the old title simply stays
+      toast.error('Could not rename the page.')
     }
   }
 
@@ -319,15 +324,24 @@ function PageTreeItem({
     if (e.key === 'Escape') setRenaming(false)
   }
 
-  const handleDeleteConfirmed = async (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
+    const ok = await confirmDialog({
+      title: `Delete "${node.title || 'Untitled'}"?`,
+      message: 'Its child pages move up one level.',
+      confirmLabel: 'Delete page',
+    })
+    if (!ok) return
     try {
       await deletePage(node.id)
+      window.dispatchEvent(new CustomEvent('kb:page-deleted', { detail: { spaceId } }))
+      // Don't leave the editor showing a page that no longer exists.
+      if (isActive) void navigate({ to: '/kb' })
       const fresh = await getSpaceTree(spaceId)
       onTreeLoaded(fresh)
     } catch {
-      setConfirmingDelete(false)
+      toast.error('Could not delete the page.')
     }
   }
 
@@ -341,7 +355,7 @@ function PageTreeItem({
       await onSubpageCreated?.()
       onFocusNewPage?.(child.id)
     } catch {
-      // silently ignore
+      toast.error('Could not create the page.')
     }
   }
 
@@ -392,8 +406,9 @@ function PageTreeItem({
           {children.length > 0 && (
             <button
               onClick={toggleExpanded}
-              aria-label={expanded ? 'Collapse' : 'Expand'}
-              className="p-0 hover:text-gray-300 transition-colors"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${node.title || 'Untitled'}`}
+              className="p-0 rounded hover:text-gray-300 transition-colors"
             >
               <svg
                 className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -437,57 +452,28 @@ function PageTreeItem({
           </Link>
         )}
 
-        {confirmingDelete ? (
-          <div className="flex items-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-gray-400 mr-1">Delete?</span>
-            <button
-              onClick={(e) => void handleDeleteConfirmed(e)}
-              aria-label={`Confirm delete ${node.title}`}
-              className="text-xs text-red-400 hover:text-red-300 px-1 py-0.5 rounded hover:bg-red-900/30"
-            >
-              Delete
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false) }}
-              aria-label="Cancel delete"
-              className="text-xs text-gray-400 hover:text-gray-300 px-1 py-0.5 rounded hover:bg-gray-700 ml-0.5"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 mr-1 flex-shrink-0 transition-opacity">
-            <button
-              onClick={(e) => void handleAddChild(e)}
-              aria-label={`Add child page under ${node.title}`}
-              title="Add child page"
-              className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmingDelete(true) }}
-              aria-label={`Delete page ${node.title}`}
-              className="p-0.5 rounded text-gray-400 hover:text-red-400 hover:bg-gray-700"
-            >
-              <svg
-                className="w-3 h-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
+        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 mr-1 flex-shrink-0 transition-opacity">
+          <button
+            onClick={(e) => void handleAddChild(e)}
+            aria-label={`Add child page under ${node.title}`}
+            title="Add child page"
+            className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PLUS} />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => void handleDelete(e)}
+            aria-label={`Delete page ${node.title}`}
+            title="Delete page"
+            className="p-0.5 rounded text-gray-400 hover:text-red-400 hover:bg-gray-700"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_TRASH} />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Render children recursively */}

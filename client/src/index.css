@@ -34,6 +34,8 @@
   --color-red-300: var(--kb-red-300);
   --color-red-400: var(--kb-red-400);
   --color-red-500: var(--kb-red-500);
+  --color-red-600: var(--kb-red-600);
+  --color-red-700: var(--kb-red-700);
   --color-red-800: var(--kb-red-800);
   --color-red-900: var(--kb-red-900);
   --color-green-400: var(--kb-green-400);
@@ -71,11 +73,25 @@
   --kb-red-300: #ffa8a8;
   --kb-red-400: #ff8787; /* danger text / hover */
   --kb-red-500: #fa5252; /* error borders / rings */
+  --kb-red-600: #e03131; /* danger button hover */
+  --kb-red-700: #c92a2a; /* danger button */
   --kb-red-800: #8f2d2d; /* error box border */
   --kb-red-900: #5c1f1f; /* danger tints (used at /20–/30) */
   --kb-green-400: #69db7c; /* success text */
   --kb-green-800: #2b6a3a; /* success box border */
   --kb-green-900: #1d4428; /* success tint */
+}
+
+/* Keyboard focus ring for every interactive element. In the base layer on
+   purpose: components that style their own focus (inputs with focus:ring-*,
+   focus:outline-none) are utilities and win; everything else — icon buttons,
+   links, tree rows — gets a visible ring instead of nothing. Mouse clicks
+   don't trigger :focus-visible on buttons/links, so this never shows on click. */
+@layer base {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--kb-blue-500);
+    outline-offset: 1px;
+  }
 }
 
 /* Prose overrides for rendered markdown */

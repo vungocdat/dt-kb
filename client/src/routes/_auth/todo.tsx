@@ -10,6 +10,7 @@ import {
 } from '../../api'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { useDocumentTitle } from '../../lib/title'
+import { confirmDialog } from '../../components/ui/ConfirmDialog'
 
 export const Route = createFileRoute('/_auth/todo')({
   component: TodoList,
@@ -110,14 +111,25 @@ function TodoList() {
       () => updateTodo(todo.id, { title }),
     )
 
-  const remove = (todo: Todo) =>
-    optimistic(
+  const remove = async (todo: Todo) => {
+    const ok = await confirmDialog({ title: `Delete "${todo.title}"?`, confirmLabel: 'Delete task' })
+    if (!ok) return
+    await optimistic(
       (prev) => prev.filter((t) => t.id !== todo.id),
       () => deleteTodo(todo.id),
     )
+  }
 
-  const clearCompleted = () =>
-    optimistic((prev) => prev.filter((t) => !t.done), clearCompletedTodos)
+  const clearCompleted = async () => {
+    const count = todos.filter((t) => t.done).length
+    const ok = await confirmDialog({
+      title: `Clear ${count} completed ${count === 1 ? 'task' : 'tasks'}?`,
+      message: 'They are deleted for good.',
+      confirmLabel: 'Clear',
+    })
+    if (!ok) return
+    await optimistic((prev) => prev.filter((t) => !t.done), clearCompletedTodos)
+  }
 
   const open = todos.filter((t) => !t.done)
   const done = todos.filter((t) => t.done)

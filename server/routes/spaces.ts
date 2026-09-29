@@ -10,10 +10,15 @@ import { renderMarkdown } from '../lib/markdown.js';
 import { requireAuth } from '../lib/session.js';
 
 // ── Prepared statements (module-level, plans cached for the process) ──
-const stmtListSpaces = sqlite.prepare<[], SpaceRow>(`
-  SELECT id, name, description, icon, sort_order, created_at, updated_at
-  FROM spaces
-  ORDER BY sort_order, created_at
+// The list also carries per-space stats for the knowledge-base landing cards:
+// page count and when any page in the space was last edited (NULL if empty).
+const stmtListSpaces = sqlite.prepare<[], SpaceListRow>(`
+  SELECT s.id, s.name, s.description, s.icon, s.sort_order, s.created_at, s.updated_at,
+         COUNT(p.id) AS page_count, MAX(p.updated_at) AS last_edited_at
+  FROM spaces s
+  LEFT JOIN pages p ON p.space_id = s.id
+  GROUP BY s.id
+  ORDER BY s.sort_order, s.created_at
 `);
 
 const stmtGetSpace = sqlite.prepare<[string], SpaceRow>(`
@@ -68,6 +73,11 @@ interface SpaceRow {
   sort_order: number;
   created_at: number;
   updated_at: number;
+}
+
+interface SpaceListRow extends SpaceRow {
+  page_count: number;
+  last_edited_at: number | null;
 }
 
 interface SpacePageRow {
@@ -129,7 +139,9 @@ spacesRouter.use('*', requireAuth);
 // GET / — list all spaces
 spacesRouter.get('/', (c) => {
   const rows = stmtListSpaces.all();
-  return c.json(rows.map(toSpace));
+  return c.json(
+    rows.map((r) => ({ ...toSpace(r), pageCount: r.page_count, lastEditedAt: r.last_edited_at })),
+  );
 });
 
 // POST / — create a space

@@ -8,6 +8,10 @@ export interface Space {
   sortOrder: number
   createdAt: number
   updatedAt: number
+  /** Only on GET /api/spaces (the list): how many pages the space holds. */
+  pageCount?: number
+  /** Only on GET /api/spaces: newest page updated_at (epoch seconds), null when empty. */
+  lastEditedAt?: number | null
 }
 
 export interface Page {

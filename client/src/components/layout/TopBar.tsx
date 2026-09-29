@@ -5,6 +5,7 @@ import { updatePage, type Page } from '../../api'
 import Menu from '../ui/Menu'
 import { ICON_DOWNLOAD, ICON_TRASH } from '../ui/icons'
 import { shortcut } from '../../lib/platform'
+import { toast } from '../ui/Toaster'
 
 interface TopBarProps {
   page: Page | null
@@ -59,6 +60,7 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
     } catch {
       // revert
       onTitleChange?.(page.title)
+      toast.error('Could not rename the page.')
     }
   }
 
@@ -87,15 +89,15 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
           </svg>
         </button>
 
-        {/* Breadcrumb */}
+        {/* Breadcrumb — on phones only the page title fits, so the trail is hidden below sm */}
         <div className="flex items-center gap-1.5 min-w-0 text-sm">
           {page ? (
             <>
-              <Link to="/kb" className="text-gray-400 hover:text-gray-200 transition-colors flex-shrink-0 max-w-[8rem] truncate" title={page.spaceName}>
+              <Link to="/kb" className="hidden sm:block text-gray-400 hover:text-gray-200 transition-colors flex-shrink-0 max-w-[8rem] truncate" title={page.spaceName}>
                 {page.spaceName}
               </Link>
               {page.ancestors.map((a) => (
-                <span key={a.id} className="contents">
+                <span key={a.id} className="hidden sm:contents">
                   <span className="text-gray-600 flex-shrink-0">/</span>
                   <Link
                     to="/pages/$pageId"
@@ -107,7 +109,7 @@ export default function TopBar({ page, onDelete, onTitleChange }: TopBarProps) {
                   </Link>
                 </span>
               ))}
-              <span className="text-gray-600 flex-shrink-0">/</span>
+              <span className="hidden sm:inline text-gray-600 flex-shrink-0">/</span>
               {editingTitle ? (
                 <input
                   ref={titleInputRef}

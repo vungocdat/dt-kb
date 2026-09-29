@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouteContext, useRouterState } from '@tanstack/re
 import { useUIStore } from '../../store'
 import { getSpaces, createSpace, importSpace, logout, updateSpace, type Space } from '../../api'
 import { ICON_PLUS, ICON_UPLOAD } from '../ui/icons'
+import { toast } from '../ui/Toaster'
 import SpaceSection from './SpaceSection'
 import NavTabs from './NavTabs'
 import { isKnowledgeBasePath } from '../../lib/tabs'
@@ -16,6 +17,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, refreshKey, onPageCreated }: SidebarProps) {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   // The Knowledge base tab owns its landing page and every page route; only
   // there does the sidebar show the space tree.
@@ -42,6 +44,8 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
     try {
       const data = await getSpaces()
       setSpaces(data)
+    } catch {
+      toast.error('Could not load spaces.')
     } finally {
       setLoading(false)
     }
@@ -51,6 +55,26 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
     void loadSpaces()
   }, [refreshKey])
 
+  // Tell the knowledge-base landing page its space cards are stale.
+  const announceSpacesChanged = () => window.dispatchEvent(new CustomEvent('kb:spaces-changed'))
+
+  // The landing page's empty state has "New space" / "Import from ZIP" buttons;
+  // they reuse the sidebar's own UI rather than duplicating it.
+  useEffect(() => {
+    const onNewSpace = () => {
+      setSidebarOpen(true)
+      setCreatingSpace(true)
+    }
+    // Runs synchronously inside the button's click, so the file picker is allowed to open.
+    const onImportSpace = () => importSpaceInputRef.current?.click()
+    window.addEventListener('kb:new-space', onNewSpace)
+    window.addEventListener('kb:import-space', onImportSpace)
+    return () => {
+      window.removeEventListener('kb:new-space', onNewSpace)
+      window.removeEventListener('kb:import-space', onImportSpace)
+    }
+  }, [setSidebarOpen])
+
   const handleImportSpace = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -58,8 +82,10 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
     try {
       await importSpace(file)
       await loadSpaces()
+      announceSpacesChanged()
+      toast.success(`Imported ${file.name}.`)
     } catch {
-      // silently fail
+      toast.error(`Could not import ${file.name}. Is it a space export ZIP?`)
     }
   }
 
@@ -69,10 +95,11 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
     try {
       const space = await createSpace({ name, description: '', icon: '📁' })
       setSpaces((prev) => [...prev, space])
+      announceSpacesChanged()
       setNewSpaceName('')
       setCreatingSpace(false)
     } catch {
-      // ignore for now — could show inline error
+      toast.error('Could not create the space.')
     }
   }
 
@@ -105,8 +132,10 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
     // Persist
     try {
       await Promise.all(reindexed.map((s) => updateSpace(s.id, { sortOrder: s.sortOrder })))
+      announceSpacesChanged()
     } catch {
       // Reload on failure to restore server state
+      toast.error('Could not reorder spaces.')
       try {
         const data = await getSpaces()
         setSpaces(data)
@@ -186,12 +215,14 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
                       space={space}
                       collapsed={collapsed}
                       onPageCreated={onPageCreated}
-                      onSpaceUpdated={(updated) =>
+                      onSpaceUpdated={(updated) => {
                         setSpaces((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
-                      }
-                      onSpaceDeleted={(id) =>
+                        announceSpacesChanged()
+                      }}
+                      onSpaceDeleted={(id) => {
                         setSpaces((prev) => prev.filter((s) => s.id !== id))
-                      }
+                        announceSpacesChanged()
+                      }}
                     />
                   </div>
                 ))
@@ -239,15 +270,17 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
                   </button>
                 </div>
               )}
-              <input
-                ref={importSpaceInputRef}
-                type="file"
-                accept=".zip,application/zip"
-                className="hidden"
-                onChange={(e) => void handleImportSpace(e)}
-              />
             </div>
           )}
+
+          {/* Outside the !collapsed block so the landing page can open it even with the rail collapsed */}
+          <input
+            ref={importSpaceInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            onChange={(e) => void handleImportSpace(e)}
+          />
         </>
       ) : (
         <div className="flex-1" />

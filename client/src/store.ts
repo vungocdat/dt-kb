@@ -20,8 +20,12 @@ interface UIState {
   setSaveStatus: (status: SaveStatus) => void
 }
 
+/** Below Tailwind's `md` breakpoint the sidebar is an overlay drawer (AppShell). */
+export const MOBILE_QUERY = '(max-width: 767px)'
+
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
+  // Start closed on phones so the drawer doesn't flash open on load.
+  sidebarOpen: typeof window === 'undefined' || !window.matchMedia(MOBILE_QUERY).matches,
   currentMode: 'read',
   searchOpen: false,
   searchQuery: '',

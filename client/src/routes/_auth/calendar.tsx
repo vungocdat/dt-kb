@@ -14,6 +14,8 @@ import { lunarFor, lunarMonthSpan, type LunarDay } from '../../lib/lunar'
 import { useUIStore } from '../../store'
 import { useDocumentTitle } from '../../lib/title'
 import { shortcut } from '../../lib/platform'
+import { confirmDialog } from '../../components/ui/ConfirmDialog'
+import { toast } from '../../components/ui/Toaster'
 
 export const Route = createFileRoute('/_auth/calendar')({
   component: Calendar,
@@ -95,7 +97,6 @@ function Calendar() {
   const [note, setNote] = useState<CalendarNote | null>(null)
   const [noteLoading, setNoteLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const cells = useMemo(() => buildGrid(view.year, view.month), [view])
   const lunarSpan = useMemo(
@@ -144,7 +145,6 @@ function Calendar() {
   useEffect(() => {
     let cancelled = false
     setNoteLoading(true)
-    setConfirmingDelete(false)
     setMode('read')
     const load = async () => {
       try {
@@ -205,6 +205,8 @@ function Calendar() {
         setNote(created)
         markHasNote(iso, true)
         setMode('edit')
+      } catch {
+        toast.error('Could not create the note.')
       } finally {
         setCreating(false)
       }
@@ -213,13 +215,19 @@ function Calendar() {
   )
 
   const handleDelete = async () => {
+    const ok = await confirmDialog({
+      title: `Delete the note for ${formatLongDate(selected)}?`,
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete note',
+    })
+    if (!ok) return
     try {
       await deleteCalendarNote(selected)
       setNote(null)
       markHasNote(selected, false)
       setMode('read')
-    } finally {
-      setConfirmingDelete(false)
+    } catch {
+      toast.error('Could not delete the note.')
     }
   }
 
@@ -386,7 +394,7 @@ function Calendar() {
           </div>
           <div className="flex-1" />
 
-          {note && !confirmingDelete && (
+          {note && (
             <>
               <button
                 onClick={toggleMode}
@@ -400,7 +408,7 @@ function Calendar() {
                 {currentMode === 'edit' ? 'Read' : 'Edit'}
               </button>
               <button
-                onClick={() => setConfirmingDelete(true)}
+                onClick={() => void handleDelete()}
                 aria-label="Delete note"
                 title="Delete note"
                 className="p-1.5 rounded text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
@@ -413,23 +421,6 @@ function Calendar() {
             </>
           )}
 
-          {confirmingDelete && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span className="text-xs text-gray-400">Delete note?</span>
-              <button
-                onClick={() => void handleDelete()}
-                className="text-xs text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-900/30"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setConfirmingDelete(false)}
-                className="text-xs text-gray-400 hover:text-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </header>
 
         {noteLoading ? (

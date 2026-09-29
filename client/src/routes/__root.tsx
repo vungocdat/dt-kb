@@ -2,6 +2,8 @@ import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useUIStore } from '../store'
 import SearchModal from '../components/search/SearchModal'
+import Toaster from '../components/ui/Toaster'
+import ConfirmHost from '../components/ui/ConfirmDialog'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -30,6 +32,8 @@ function RootComponent() {
     <>
       <Outlet />
       <SearchModal />
+      <ConfirmHost />
+      <Toaster />
     </>
   )
 }

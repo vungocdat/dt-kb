@@ -7,6 +7,8 @@ import { MarkdownRenderer } from '../../../components/editor/MarkdownRenderer'
 import { TableOfContents } from '../../../components/layout/TableOfContents'
 import { Skeleton } from '../../../components/ui/Skeleton'
 import { useDocumentTitle } from '../../../lib/title'
+import { confirmDialog } from '../../../components/ui/ConfirmDialog'
+import { toast } from '../../../components/ui/Toaster'
 
 export const Route = createFileRoute('/_auth/pages/$pageId')({
   component: PageView,
@@ -52,7 +54,12 @@ function PageView() {
   const handleDelete = useCallback(async () => {
     const current = pageRef.current
     if (!current) return
-    if (!confirm(`Delete "${current.title}"? Its children will be moved up.`)) return
+    const ok = await confirmDialog({
+      title: `Delete "${current.title || 'Untitled'}"?`,
+      message: 'Its child pages move up one level.',
+      confirmLabel: 'Delete page',
+    })
+    if (!ok) return
     try {
       await deletePage(current.id)
       window.dispatchEvent(
@@ -60,7 +67,7 @@ function PageView() {
       )
       await navigate({ to: '/kb' })
     } catch {
-      alert('Failed to delete page.')
+      toast.error('Could not delete the page.')
     }
   }, [navigate])
 

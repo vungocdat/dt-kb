@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
-import { search, type SearchResult } from '../../api'
+import { getRecentPages, getSpaces, search, type RecentPage, type SearchResult, type Space } from '../../api'
 
 const SEARCH_DEBOUNCE_MS = 300
+
+/** One row in the list — a search hit, or a recent page while the box is empty. */
+interface Item {
+  id: string
+  title: string
+  spaceId: string
+  snippet?: string
+}
 
 export default function SearchModal() {
   const searchOpen = useUIStore((s) => s.searchOpen)
@@ -13,9 +21,12 @@ export default function SearchModal() {
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [recent, setRecent] = useState<RecentPage[]>([])
+  const [spaces, setSpaces] = useState<Map<string, Space>>(new Map())
   const [loading, setLoading] = useState(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
   // Focus input when opened; pre-fill from store query when provided
@@ -28,12 +39,32 @@ export default function SearchModal() {
     }
   }, [searchOpen]) // searchQuery intentionally omitted — only runs on open
 
+  // Space names for the result chips, and recent pages for the empty state.
+  // Refetched on every open so they never go stale; both are small.
+  useEffect(() => {
+    if (!searchOpen) return
+    let cancelled = false
+    void Promise.all([getSpaces(), getRecentPages()])
+      .then(([s, r]) => {
+        if (cancelled) return
+        setSpaces(new Map(s.map((sp) => [sp.id, sp])))
+        setRecent(r)
+      })
+      .catch(() => {
+        // Non-essential: results still work, just without chips / recents.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [searchOpen])
+
   // Debounced search
   useEffect(() => {
     if (!searchOpen) return
     if (!query.trim()) {
       setResults([])
       setLoading(false)
+      setActiveIndex(0)
       return
     }
 
@@ -56,15 +87,25 @@ export default function SearchModal() {
     }
   }, [query, searchOpen])
 
+  const showingRecent = !query.trim()
+  const items: Item[] = showingRecent ? recent : results
+
+  // Keep the keyboard-selected row visible in the scrolling list.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
+  }, [activeIndex])
+
   const handleClose = () => {
     closeSearch()
     setQuery('')
     setResults([])
   }
 
-  const handleSelect = async (result: SearchResult) => {
+  const handleSelect = async (item: Item) => {
     handleClose()
-    await navigate({ to: '/pages/$pageId', params: { pageId: result.id } })
+    await navigate({ to: '/pages/$pageId', params: { pageId: item.id } })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -74,15 +115,15 @@ export default function SearchModal() {
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, results.length - 1))
+      setActiveIndex((i) => Math.min(i + 1, items.length - 1))
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex((i) => Math.max(i - 1, 0))
     }
-    if (e.key === 'Enter' && results[activeIndex]) {
+    if (e.key === 'Enter' && items[activeIndex]) {
       e.preventDefault()
-      void handleSelect(results[activeIndex])
+      void handleSelect(items[activeIndex])
     }
   }
 
@@ -113,6 +154,7 @@ export default function SearchModal() {
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden
             >
               <path
                 strokeLinecap="round"
@@ -127,6 +169,7 @@ export default function SearchModal() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search pages…"
+              aria-label="Search pages"
               className="flex-1 bg-transparent text-gray-100 placeholder-gray-500 text-sm focus:outline-none"
             />
             {loading && (
@@ -134,6 +177,7 @@ export default function SearchModal() {
                 className="w-4 h-4 text-gray-400 animate-spin flex-shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
+                aria-hidden
               >
                 <circle
                   className="opacity-25"
@@ -155,31 +199,50 @@ export default function SearchModal() {
             </kbd>
           </div>
 
-          {/* Results */}
-          {results.length > 0 && (
-            <ul className="max-h-80 overflow-y-auto py-2">
-              {results.map((result, index) => (
-                <li key={result.id}>
-                  <button
-                    onClick={() => void handleSelect(result)}
-                    className={`w-full text-left px-4 py-2.5 transition-colors ${
-                      index === activeIndex
-                        ? 'bg-blue-600/20 text-blue-300'
-                        : 'text-gray-200 hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="text-sm font-medium truncate">{result.title || 'Untitled'}</div>
-                    {result.snippet && (
-                      <div
-                        className="mt-0.5 text-xs text-gray-400 line-clamp-2 [&_mark]:bg-yellow-400/30 [&_mark]:text-yellow-200 [&_mark]:rounded [&_mark]:px-0.5"
-                        // Snippet contains <mark>…</mark> from FTS5 highlight — safe server HTML
-                        dangerouslySetInnerHTML={{ __html: result.snippet }}
-                      />
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {/* Results, or recent pages while nothing is typed */}
+          {items.length > 0 && (
+            <>
+              {showingRecent && (
+                <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Recently edited
+                </p>
+              )}
+              <ul ref={listRef} className={`max-h-80 overflow-y-auto ${showingRecent ? 'pb-2' : 'py-2'}`}>
+                {items.map((item, index) => {
+                  const space = spaces.get(item.spaceId)
+                  return (
+                    <li key={item.id}>
+                      <button
+                        data-index={index}
+                        onClick={() => void handleSelect(item)}
+                        onMouseMove={() => setActiveIndex(index)}
+                        className={`w-full text-left px-4 py-2.5 transition-colors ${
+                          index === activeIndex ? 'bg-blue-600/20 text-blue-300' : 'text-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 min-w-0 text-sm font-medium truncate">
+                            {item.title || 'Untitled'}
+                          </span>
+                          {space && (
+                            <span className="flex-shrink-0 max-w-[40%] truncate text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded-full">
+                              {space.icon || '📁'} {space.name}
+                            </span>
+                          )}
+                        </div>
+                        {item.snippet && (
+                          <div
+                            className="mt-0.5 text-xs text-gray-400 line-clamp-2 [&_mark]:bg-yellow-400/30 [&_mark]:text-yellow-200 [&_mark]:rounded [&_mark]:px-0.5"
+                            // Snippet contains <mark>…</mark> from FTS5 highlight — safe server HTML
+                            dangerouslySetInnerHTML={{ __html: item.snippet }}
+                          />
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
           )}
 
           {/* Empty state */}

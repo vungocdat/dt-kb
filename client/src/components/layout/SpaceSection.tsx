@@ -5,6 +5,8 @@ import PageTree from './PageTree'
 import { dragState } from './dragState'
 import EmojiPicker from '../ui/EmojiPicker'
 import Menu from '../ui/Menu'
+import { confirmDialog } from '../ui/ConfirmDialog'
+import { toast } from '../ui/Toaster'
 import { ICON_DOWNLOAD, ICON_PLUS, ICON_TRASH, ICON_UPLOAD } from '../ui/icons'
 
 interface SpaceSectionProps {
@@ -32,7 +34,6 @@ export default function SpaceSection({
   const [treeVersion, setTreeVersion] = useState(0)
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [pickerAnchor, setPickerAnchor] = useState<{ left: number; bottom: number } | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -77,7 +78,8 @@ export default function SpaceSection({
       const updated = await updateSpace(space.id, { name })
       onSpaceUpdated?.(updated)
     } catch {
-      // revert silently — space.name prop is unchanged
+      // space.name prop is unchanged, so the old name simply stays
+      toast.error('Could not rename the space.')
     }
   }
 
@@ -103,7 +105,7 @@ export default function SpaceSection({
       const updated = await updateSpace(space.id, { icon })
       onSpaceUpdated?.(updated)
     } catch {
-      // revert silently — space.icon prop is unchanged
+      toast.error('Could not change the icon.')
     }
   }
 
@@ -117,7 +119,7 @@ export default function SpaceSection({
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      // silently fail
+      toast.error(`Could not export "${space.name}".`)
     }
   }
 
@@ -133,7 +135,7 @@ export default function SpaceSection({
       setTreeVersion((v) => v + 1)
       onPageCreated()
     } catch {
-      // silently fail
+      toast.error(`Could not import ${file.name}.`)
     }
   }
 
@@ -155,20 +157,23 @@ export default function SpaceSection({
       onPageCreated()
       focusNewPage(page.id)
     } catch {
-      // ignore
+      toast.error('Could not create the page.')
     }
   }
 
-  const handleDeleteConfirmed = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (deletingRef.current) return
+  const handleDelete = async () => {
+    const ok = await confirmDialog({
+      title: `Delete "${space.name}"?`,
+      message: 'Every page in this space is deleted with it. This cannot be undone.',
+      confirmLabel: 'Delete space',
+    })
+    if (!ok || deletingRef.current) return
     deletingRef.current = true
     try {
       await deleteSpace(space.id)
       onSpaceDeleted?.(space.id)
     } catch {
-      // Reset UI on error — don't leave the confirm prompt open
-      setConfirmingDelete(false)
+      toast.error(`Could not delete "${space.name}".`)
     } finally {
       deletingRef.current = false
     }
@@ -209,16 +214,23 @@ export default function SpaceSection({
       setExpanded(true)
       localStorage.setItem(`kb:space:${space.id}:expanded`, 'true')
     } catch {
-      // silently fail
+      toast.error(`Could not move the page to "${space.name}".`)
     }
   }
+
+  const toggleExpanded = () =>
+    setExpanded((v) => {
+      const next = !v
+      localStorage.setItem(`kb:space:${space.id}:expanded`, String(next))
+      return next
+    })
 
   if (collapsed) {
     return (
       <div
         className="px-2 py-1.5 flex items-center justify-center text-lg cursor-pointer hover:bg-gray-800 rounded mx-1 my-0.5"
         title={space.name}
-        onClick={() => setExpanded((v) => { const next = !v; localStorage.setItem(`kb:space:${space.id}:expanded`, String(next)); return next })}
+        onClick={toggleExpanded}
       >
         <span>{space.icon || '📁'}</span>
       </div>
@@ -235,23 +247,25 @@ export default function SpaceSection({
     >
       <div
         className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer hover:bg-gray-800 rounded mx-1 group select-none"
-        onClick={() => { if (!confirmingDelete) setExpanded((v) => { const next = !v; localStorage.setItem(`kb:space:${space.id}:expanded`, String(next)); return next }) }}
+        onClick={toggleExpanded}
       >
-        <svg
-          className={`w-3 h-3 text-gray-500 flex-shrink-0 transition-transform ${
-            expanded ? 'rotate-90' : ''
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+        {/* The whole row toggles on click; this button is the keyboard route */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpanded() }}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} ${space.name}`}
+          className="flex-shrink-0 rounded text-gray-500 hover:text-gray-200"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+          <svg
+            className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
         <button
           onClick={toggleIconPicker}
           onMouseDown={(e) => e.stopPropagation()}
@@ -281,50 +295,30 @@ export default function SpaceSection({
             {space.name}
           </span>
         )}
-        {confirmingDelete ? (
-          <div className="flex items-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <span className="text-xs text-gray-400 mr-1">Delete space?</span>
-            <button
-              onClick={handleDeleteConfirmed}
-              aria-label={`Confirm delete ${space.name}`}
-              className="text-xs text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-900/30"
-            >
-              Delete
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false) }}
-              aria-label="Cancel delete"
-              className="text-xs text-gray-400 hover:text-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-700 ml-0.5"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          // Revealed on row hover, while focused, and while the menu is open
-          <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 transition-opacity">
-            <button
-              onClick={handleAddPage}
-              aria-label={`New page in ${space.name}`}
-              title="New page"
-              className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PLUS} />
-              </svg>
-            </button>
-            <Menu
-              label={`Actions for ${space.name}`}
-              align="right"
-              triggerClassName="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
-              items={[
-                { label: 'Rename', icon: 'M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.5H9V13z', onSelect: () => startRenaming() },
-                { label: 'Import .md page…', icon: ICON_UPLOAD, onSelect: () => importPageInputRef.current?.click() },
-                { label: 'Export as ZIP', icon: ICON_DOWNLOAD, onSelect: () => void handleExportSpace() },
-                { label: 'Delete space…', icon: ICON_TRASH, danger: true, onSelect: () => setConfirmingDelete(true) },
-              ]}
-            />
-          </div>
-        )}
+        {/* Revealed on row hover, while focused, and while the menu is open */}
+        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 transition-opacity">
+          <button
+            onClick={handleAddPage}
+            aria-label={`New page in ${space.name}`}
+            title="New page"
+            className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PLUS} />
+            </svg>
+          </button>
+          <Menu
+            label={`Actions for ${space.name}`}
+            align="right"
+            triggerClassName="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
+            items={[
+              { label: 'Rename', icon: 'M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.5H9V13z', onSelect: () => startRenaming() },
+              { label: 'Import .md page…', icon: ICON_UPLOAD, onSelect: () => importPageInputRef.current?.click() },
+              { label: 'Export as ZIP', icon: ICON_DOWNLOAD, onSelect: () => void handleExportSpace() },
+              { label: 'Delete space…', icon: ICON_TRASH, danger: true, onSelect: () => void handleDelete() },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Hidden file input for .md import (opened from the space menu) */}

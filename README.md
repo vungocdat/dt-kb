@@ -8,12 +8,17 @@ Inspired by Docmost and One Markdown
 
 ## Features
 
+The app has three top-level tabs in the sidebar — **Knowledge base**, **Calendar** and **To-do** — each a separate feature with its own storage.
+
 - **Spaces** — top-level containers to organise pages by topic or project; drag to reorder, click a space's icon to pick a custom emoji
 - **Nested pages** — tree structure with unlimited depth; drag to reorder siblings or move across spaces
 - **Dual view per page** — Read mode (rendered HTML with syntax highlighting) and Edit mode (CodeMirror raw Markdown editor)
 - **Auto-save** — edits are saved 800 ms after you stop typing
 - **Full-text search** — SQLite FTS5 with snippet extraction, triggered with `Ctrl/Cmd+K`
 - **Calendar** — a separate month view focused on today, where each day can hold one Markdown note, written and read without leaving the calendar; calendar notes are independent of spaces and pages
+- **Vietnamese lunar calendar (âm lịch)** — every day in the calendar shows its lunar date, with Vietnamese holidays (Tết, Giỗ Tổ, Trung Thu, …), the 24 solar terms (tiết khí) and Can Chi names; computed for UTC+7, so dates match Vietnamese calendars even in years where they differ from the Chinese one
+- **To-do** — a simple task list: add, tick off, rename and delete tasks; finished tasks collect in a collapsible Completed section with a one-click "Clear completed"
+- **Adjustable tabs** — drag the sidebar tabs (or use `Alt+↑/↓`) to put them in any order, and choose which tab the app opens on under **Settings → Default page** (Calendar by default); both preferences are saved per browser
 - **GFM + emoji** — GitHub Flavored Markdown, `:smile:` syntax, and emoticon shortcodes
 - **Syntax highlighting** — Atom One Dark theme via `rehype-highlight`; code blocks have a one-click copy-to-clipboard button
 - **Table of contents** — sticky right sidebar in Read mode listing all headings with active-section highlighting and click-to-scroll; auto-hidden when fewer than 2 headings
@@ -21,7 +26,7 @@ Inspired by Docmost and One Markdown
 - **Export** — download any page as a `.md` file, or export a whole space as a `.zip` archive (includes all pages and hierarchy metadata for re-import)
 - **Import** — import a `.md` file as a new page into any space, or restore a space from a previously exported `.zip`
 - **Login-protected** — single credential set in `.env`, no users table, session cookies via `iron-session`
-- **Password change** — change your password from the settings page without restarting the server
+- **Account settings** — change your username or password from the settings page without restarting the server
 - **Dark mode** — single soft, low-contrast dark theme (Docmost/Mantine-inspired neutrals); no light mode or toggle
 
 ## Stack
@@ -42,8 +47,10 @@ Inspired by Docmost and One Markdown
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22 (the production server runs v22.23.x)
 - npm 10+
+
+> `better-sqlite3` ships a native module built for one Node major version. If the server fails with *"Could not locate the bindings file"*, you are on a different Node major — switch to Node 22 and run `npm rebuild better-sqlite3`. Never copy `node_modules` between machines; run `npm install` on each.
 
 ### Installation
 
@@ -149,5 +156,7 @@ The database (`data/kb.db`) is untouched by these steps. All four commands are i
 ## Data
 
 All data lives in a single SQLite file (`data/kb.db` by default, controlled by `DB_PATH`). Back this file up — it is the only stateful component of the application.
+
+Knowledge base pages, calendar notes (`calendar_notes`) and to-do tasks (`todos`) all live in that same file; the calendar and to-do tables are created automatically on startup, so no migration is needed for them. Tab order and the default page are browser preferences (`localStorage`), not stored in the database.
 
 Markdown source is stored in `pages.content`; rendered HTML is cached in `pages.content_html` and regenerated on every save. Deleting a page re-parents its children to the deleted page's parent rather than cascading.

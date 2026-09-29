@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AuthIndexRouteImport } from './routes/_auth/index'
 import { Route as AuthTodoRouteImport } from './routes/_auth/todo'
 import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
+import { Route as AuthKbRouteImport } from './routes/_auth/kb'
 import { Route as AuthCalendarRouteImport } from './routes/_auth/calendar'
 import { Route as AuthPagesPageIdRouteImport } from './routes/_auth/pages/$pageId'
 
@@ -41,6 +42,11 @@ const AuthSettingsRoute = AuthSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthKbRoute = AuthKbRouteImport.update({
+  id: '/kb',
+  path: '/kb',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthCalendarRoute = AuthCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -56,6 +62,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/kb': typeof AuthKbRoute
   '/settings': typeof AuthSettingsRoute
   '/todo': typeof AuthTodoRoute
   '/pages/$pageId': typeof AuthPagesPageIdRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/kb': typeof AuthKbRoute
   '/settings': typeof AuthSettingsRoute
   '/todo': typeof AuthTodoRoute
   '/': typeof AuthIndexRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/_auth/calendar': typeof AuthCalendarRoute
+  '/_auth/kb': typeof AuthKbRoute
   '/_auth/settings': typeof AuthSettingsRoute
   '/_auth/todo': typeof AuthTodoRoute
   '/_auth/': typeof AuthIndexRoute
@@ -84,16 +93,25 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/calendar'
+    | '/kb'
     | '/settings'
     | '/todo'
     | '/pages/$pageId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/calendar' | '/settings' | '/todo' | '/' | '/pages/$pageId'
+  to:
+    | '/login'
+    | '/calendar'
+    | '/kb'
+    | '/settings'
+    | '/todo'
+    | '/'
+    | '/pages/$pageId'
   id:
     | '__root__'
     | '/_auth'
     | '/login'
     | '/_auth/calendar'
+    | '/_auth/kb'
     | '/_auth/settings'
     | '/_auth/todo'
     | '/_auth/'
@@ -142,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/kb': {
+      id: '/_auth/kb'
+      path: '/kb'
+      fullPath: '/kb'
+      preLoaderRoute: typeof AuthKbRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/calendar': {
       id: '/_auth/calendar'
       path: '/calendar'
@@ -161,6 +186,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthCalendarRoute: typeof AuthCalendarRoute
+  AuthKbRoute: typeof AuthKbRoute
   AuthSettingsRoute: typeof AuthSettingsRoute
   AuthTodoRoute: typeof AuthTodoRoute
   AuthIndexRoute: typeof AuthIndexRoute
@@ -169,6 +195,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCalendarRoute: AuthCalendarRoute,
+  AuthKbRoute: AuthKbRoute,
   AuthSettingsRoute: AuthSettingsRoute,
   AuthTodoRoute: AuthTodoRoute,
   AuthIndexRoute: AuthIndexRoute,

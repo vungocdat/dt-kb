@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { changePassword, changeUsername } from '../../api'
+import { loadDefaultTab, loadTabOrder, saveDefaultTab, TABS, type TabId } from '../../lib/tabs'
 
 export const Route = createFileRoute('/_auth/settings')({
   component: SettingsPage,
@@ -25,10 +26,64 @@ function SettingsPage() {
         <h1 className="text-xl font-semibold text-gray-100 mb-8">Settings</h1>
 
         <div className="space-y-6">
+          <DefaultPageCard />
           <ChangeUsernameCard />
           <ChangePasswordCard />
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Which tab `/` opens — login, the sidebar title and "Home" all land there. */
+function DefaultPageCard() {
+  const [selected, setSelected] = useState<TabId>(() => loadDefaultTab().id)
+  // List tabs in the user's sidebar order so the choices look familiar.
+  const tabs = loadTabOrder().map((id) => TABS.find((t) => t.id === id)!)
+
+  const choose = (id: TabId) => {
+    setSelected(id)
+    saveDefaultTab(id)
+  }
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+      <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wide mb-2">
+        Default page
+      </h2>
+      <p id="defaultPageHint" className="text-sm text-gray-500 mb-4">
+        The tab the app opens on after you sign in. Saved in this browser.
+      </p>
+
+      <fieldset aria-describedby="defaultPageHint" className="space-y-1.5">
+        <legend className="sr-only">Default page</legend>
+        {tabs.map((tab) => {
+          const checked = tab.id === selected
+          return (
+            <label
+              key={tab.id}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors has-[:focus-visible]:ring-1 has-[:focus-visible]:ring-blue-500 ${
+                checked
+                  ? 'border-blue-500/60 bg-blue-500/10 text-gray-100'
+                  : 'border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-gray-100'
+              }`}
+            >
+              <input
+                type="radio"
+                name="defaultPage"
+                value={tab.id}
+                checked={checked}
+                onChange={() => choose(tab.id)}
+                className="accent-blue-500"
+              />
+              <svg className="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+              </svg>
+              {tab.label}
+            </label>
+          )
+        })}
+      </fieldset>
     </div>
   )
 }

@@ -56,7 +56,7 @@ function PageView() {
       window.dispatchEvent(
         new CustomEvent('kb:page-deleted', { detail: { spaceId: current.spaceId } })
       )
-      await navigate({ to: '/' })
+      await navigate({ to: '/kb' })
     } catch {
       alert('Failed to delete page.')
     }

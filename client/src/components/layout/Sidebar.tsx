@@ -3,7 +3,8 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
 import { getSpaces, createSpace, importSpace, updateSpace, type Space } from '../../api'
 import SpaceSection from './SpaceSection'
-import NavTabs, { isKnowledgeBasePath } from './NavTabs'
+import NavTabs from './NavTabs'
+import { isKnowledgeBasePath } from '../../lib/tabs'
 import { Skeleton } from '../ui/Skeleton'
 
 interface SidebarProps {

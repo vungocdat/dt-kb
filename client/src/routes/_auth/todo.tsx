@@ -29,6 +29,7 @@ function TodoList() {
   const [newTitle, setNewTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const [showCompleted, setShowCompleted] = useState(true)
+  const newTaskRef = useRef<HTMLInputElement>(null)
 
   const reload = async () => {
     try {
@@ -73,6 +74,9 @@ function TodoList() {
       setError('Could not add the task.')
     } finally {
       setAdding(false)
+      // Stay in the box for the next task. Clicking "Add" moves focus to the
+      // button, which is then disabled (empty box) and would drop focus.
+      newTaskRef.current?.focus()
     }
   }
 
@@ -119,6 +123,7 @@ function TodoList() {
 
         <form onSubmit={(e) => void handleAdd(e)} className="flex gap-2 mb-6">
           <input
+            ref={newTaskRef}
             autoFocus
             type="text"
             value={newTitle}

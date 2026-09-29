@@ -4,6 +4,8 @@ import { createPage, deleteSpace, exportSpace, getSpaceTree, movePage, updateSpa
 import PageTree from './PageTree'
 import { dragState } from './dragState'
 import EmojiPicker from '../ui/EmojiPicker'
+import Menu from '../ui/Menu'
+import { ICON_DOWNLOAD, ICON_PLUS, ICON_TRASH, ICON_UPLOAD } from '../ui/icons'
 
 interface SpaceSectionProps {
   space: Space
@@ -28,7 +30,6 @@ export default function SpaceSection({
   // Page id that should auto-open into inline rename right after creation.
   const [autoRenameId, setAutoRenameId] = useState<string | null>(null)
   const [treeVersion, setTreeVersion] = useState(0)
-  const [hovering, setHovering] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -61,8 +62,8 @@ export default function SpaceSection({
     return () => window.removeEventListener('kb:page-deleted', handler as EventListener)
   }, [space.id])
 
-  const startRenaming = (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const startRenaming = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
     setRenameValue(space.name)
     setRenaming(true)
     setTimeout(() => renameInputRef.current?.select(), 0)
@@ -234,8 +235,6 @@ export default function SpaceSection({
     >
       <div
         className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer hover:bg-gray-800 rounded mx-1 group select-none"
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => { if (!confirmingDelete) setHovering(false) }}
         onClick={() => { if (!confirmingDelete) setExpanded((v) => { const next = !v; localStorage.setItem(`kb:space:${space.id}:expanded`, String(next)); return next }) }}
       >
         <svg
@@ -300,87 +299,42 @@ export default function SpaceSection({
               Cancel
             </button>
           </div>
-        ) : hovering && (
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {/* Add page */}
+        ) : (
+          // Revealed on row hover, while focused, and while the menu is open
+          <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 transition-opacity">
             <button
               onClick={handleAddPage}
               aria-label={`New page in ${space.name}`}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-opacity flex-shrink-0"
+              title="New page"
+              className="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
             >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PLUS} />
               </svg>
             </button>
-
-            {/* Export space as ZIP */}
-            <button
-              onClick={(e) => { e.stopPropagation(); void handleExportSpace() }}
-              aria-label={`Export space ${space.name}`}
-              title="Export space as ZIP"
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-opacity flex-shrink-0"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </button>
-
-            {/* Import .md file as page */}
-            <button
-              onClick={(e) => { e.stopPropagation(); importPageInputRef.current?.click() }}
-              aria-label={`Import page into ${space.name}`}
-              title="Import .md file as page"
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-opacity flex-shrink-0"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
-              </svg>
-            </button>
-
-            {/* Delete space */}
-            <button
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
-              aria-label={`Delete space ${space.name}`}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-red-400 hover:bg-gray-700 transition-opacity flex-shrink-0"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-
-            {/* Hidden file input for .md import */}
-            <input
-              ref={importPageInputRef}
-              type="file"
-              accept=".md,text/markdown"
-              className="hidden"
-              onChange={(e) => void handleImportPage(e)}
+            <Menu
+              label={`Actions for ${space.name}`}
+              align="right"
+              triggerClassName="p-0.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-700"
+              items={[
+                { label: 'Rename', icon: 'M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.5H9V13z', onSelect: () => startRenaming() },
+                { label: 'Import .md page…', icon: ICON_UPLOAD, onSelect: () => importPageInputRef.current?.click() },
+                { label: 'Export as ZIP', icon: ICON_DOWNLOAD, onSelect: () => void handleExportSpace() },
+                { label: 'Delete space…', icon: ICON_TRASH, danger: true, onSelect: () => setConfirmingDelete(true) },
+              ]}
             />
           </div>
         )}
       </div>
+
+      {/* Hidden file input for .md import (opened from the space menu) */}
+      <input
+        ref={importPageInputRef}
+        type="file"
+        accept=".md,text/markdown"
+        className="hidden"
+        onChange={(e) => void handleImportPage(e)}
+      />
 
       {pickerAnchor && (
         <EmojiPicker

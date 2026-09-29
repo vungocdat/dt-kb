@@ -348,7 +348,8 @@ function PageTreeItem({
   // Indentation: 16px per level, with root pages already one level in. The
   // space header's chevron sits at 16px (mx-1 + px-3), so root pages start at
   // 32px — otherwise a space and its direct children look like siblings.
-  const paddingLeft = 32 + depth * 16
+  // The row itself has mx-1 (like the space header), hence 28 here.
+  const paddingLeft = 28 + depth * 16
 
   return (
     <li
@@ -375,7 +376,15 @@ function PageTreeItem({
     >
       <div
         ref={rowRef}
-        className={`group flex items-center rounded-sm transition-opacity ${isDragging ? 'opacity-40' : 'opacity-100'} ${isNestTarget ? 'ring-1 ring-inset ring-blue-500 bg-blue-500/10' : ''}`}
+        // Active/hover tint the whole row (indent + chevron + actions), not
+        // just the title link, so the highlight lines up with the space header.
+        className={`group flex items-center mx-1 rounded transition-colors ${isDragging ? 'opacity-40' : ''} ${
+          isNestTarget
+            ? 'ring-1 ring-inset ring-blue-500 bg-blue-500/10'
+            : isActive
+            ? 'bg-blue-600/10'
+            : 'hover:bg-gray-800'
+        }`}
         style={{ paddingLeft: `${paddingLeft}px` }}
       >
         {/* Expand/collapse toggle */}
@@ -414,10 +423,8 @@ function PageTreeItem({
           <Link
             to="/pages/$pageId"
             params={{ pageId: node.id }}
-            className={`flex-1 flex items-center py-1 pr-1 text-sm rounded-sm truncate transition-colors ${
-              isActive
-                ? 'text-blue-400 bg-blue-600/10'
-                : 'text-gray-300 hover:text-gray-100 hover:bg-gray-800'
+            className={`flex-1 flex items-center py-1 pr-1 text-sm truncate transition-colors ${
+              isActive ? 'text-blue-400' : 'text-gray-300 group-hover:text-gray-100'
             }`}
           >
             <span
@@ -449,7 +456,7 @@ function PageTreeItem({
             </button>
           </div>
         ) : (
-          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 mr-2 flex-shrink-0 transition-opacity">
+          <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 mr-1 flex-shrink-0 transition-opacity">
             <button
               onClick={(e) => void handleAddChild(e)}
               aria-label={`Add child page under ${node.title}`}

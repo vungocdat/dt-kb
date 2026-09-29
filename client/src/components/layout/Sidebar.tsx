@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouteContext, useRouterState } from '@tanstack/react-router'
 import { useUIStore } from '../../store'
-import { getSpaces, createSpace, importSpace, updateSpace, type Space } from '../../api'
+import { getSpaces, createSpace, importSpace, logout, updateSpace, type Space } from '../../api'
+import { ICON_PLUS, ICON_UPLOAD } from '../ui/icons'
 import SpaceSection from './SpaceSection'
 import NavTabs from './NavTabs'
 import { isKnowledgeBasePath } from '../../lib/tabs'
@@ -26,6 +27,16 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
   const [draggedSpaceId, setDraggedSpaceId] = useState<string | null>(null)
   const [dragOverSpaceId, setDragOverSpaceId] = useState<string | null>(null)
   const importSpaceInputRef = useRef<HTMLInputElement>(null)
+  const { username } = useRouteContext({ from: '/_auth' })
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      await navigate({ to: '/login' })
+    }
+  }
 
   const loadSpaces = async () => {
     try {
@@ -187,9 +198,9 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
             )}
           </div>
 
-          {/* New space */}
+          {/* New space + import — one row */}
           {!collapsed && (
-            <div className="border-t border-gray-800 p-3 flex-shrink-0">
+            <div className="border-t border-gray-800 p-2 flex-shrink-0">
               {creatingSpace ? (
                 <input
                   autoFocus
@@ -206,33 +217,28 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
                   className="w-full px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               ) : (
-                <button
-                  onClick={() => setCreatingSpace(true)}
-                  className="w-full flex items-center gap-2 text-sm text-gray-400 hover:text-gray-100 hover:bg-gray-800 px-2 py-1.5 rounded transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  New Space
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCreatingSpace(true)}
+                    className="flex-1 flex items-center gap-2 text-sm text-gray-400 hover:text-gray-100 hover:bg-gray-800 px-2 py-1.5 rounded transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PLUS} />
+                    </svg>
+                    New space
+                  </button>
+                  <button
+                    onClick={() => importSpaceInputRef.current?.click()}
+                    aria-label="Import space from ZIP"
+                    title="Import space from ZIP"
+                    className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_UPLOAD} />
+                    </svg>
+                  </button>
+                </div>
               )}
-            </div>
-          )}
-
-          {/* Import space */}
-          {!collapsed && (
-            <div className="px-3 py-2 border-t border-gray-800 flex-shrink-0">
-              <button
-                onClick={() => importSpaceInputRef.current?.click()}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-100 hover:bg-gray-800 rounded transition-colors"
-                title="Import space from ZIP"
-              >
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
-                </svg>
-                Import Space
-              </button>
               <input
                 ref={importSpaceInputRef}
                 type="file"
@@ -246,6 +252,54 @@ export default function Sidebar({ collapsed, refreshKey, onPageCreated }: Sideba
       ) : (
         <div className="flex-1" />
       )}
+
+      {/* Account: who's signed in, settings and log out */}
+      <div
+        className={`border-t border-gray-800 p-2 flex-shrink-0 flex items-center gap-1 ${
+          collapsed ? 'flex-col' : ''
+        }`}
+      >
+        {!collapsed && (
+          <div className="flex-1 min-w-0 flex items-center gap-2 px-1">
+            <span
+              aria-hidden
+              className="w-6 h-6 flex-shrink-0 rounded-full bg-gray-700 text-gray-200 text-xs font-semibold flex items-center justify-center"
+            >
+              {username.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-sm text-gray-300 truncate" title={username}>
+              {username}
+            </span>
+          </div>
+        )}
+        <Link
+          to="/settings"
+          aria-label="Settings"
+          title="Settings"
+          className={`p-1.5 rounded transition-colors ${
+            pathname === '/settings'
+              ? 'bg-gray-800 text-gray-100'
+              : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </Link>
+        <button
+          onClick={() => void handleLogout()}
+          aria-label="Log out"
+          title="Log out"
+          className="p-1.5 rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

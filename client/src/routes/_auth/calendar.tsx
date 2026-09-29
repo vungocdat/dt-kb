@@ -13,6 +13,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { lunarFor, lunarMonthSpan, type LunarDay } from '../../lib/lunar'
 import { useUIStore } from '../../store'
 import { useDocumentTitle } from '../../lib/title'
+import { shortcut } from '../../lib/platform'
 
 export const Route = createFileRoute('/_auth/calendar')({
   component: Calendar,
@@ -389,7 +390,7 @@ function Calendar() {
             <>
               <button
                 onClick={toggleMode}
-                title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (Ctrl+E)`}
+                title={`Switch to ${currentMode === 'read' ? 'edit' : 'read'} mode (${shortcut('E')})`}
                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                   currentMode === 'edit'
                     ? 'bg-blue-600 text-gray-50 hover:bg-blue-500'
@@ -466,7 +467,7 @@ function Calendar() {
               <MarkdownRenderer html={note.contentHtml} />
             ) : (
               <p className="px-8 py-6 text-sm text-gray-500">
-                This note is empty. Press Edit (or Ctrl+E) to write something.
+                This note is empty. Press Edit (or {shortcut('E')}) to write something.
               </p>
             )}
           </div>

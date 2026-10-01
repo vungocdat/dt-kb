@@ -93,26 +93,67 @@ NODE_ENV=development
 openssl rand -base64 24 | cut -c1-32
 ```
 
-### Run migrations and start
+### Start
 
 ```sh
-npm run db:migrate
 npm run dev
 ```
 
-The API starts on `http://localhost:3333` and the Vite dev server on `http://localhost:5173`.
+The API starts on `http://localhost:3333` and the Vite dev server on `http://localhost:5173`. There is no separate migration step: on startup the server creates `server/data/kb.db` if it is missing and applies any pending migrations itself.
+
+> Don't run `npm run db:migrate` (`drizzle-kit push`) against a database the app uses — it creates the tables without recording them in the migration ledger, and the server then skips its own migrations, which breaks future schema upgrades. It is only for local schema experiments.
 
 ## Production Deployment
 
-Build the app (Vite output is bundled into the server package):
+A step-by-step setup for a fresh Ubuntu server, ending with an empty database. The app runs as your normal login user (`youruser` below) from `/opt/dt-kb`.
+
+### 1. Clone and install
+
+```sh
+sudo mkdir /opt/dt-kb && sudo chown $USER:$USER /opt/dt-kb
+git clone https://github.com/vungocdat/dt-kb.git /opt/dt-kb
+cd /opt/dt-kb
+node -v          # must be v22.x
+npm install      # includes the build tools needed below
+```
+
+A fresh clone has no `server/data/` folder — the app creates it, with an empty database, on first start.
+
+### 2. Create `.env`
+
+```sh
+npm run setup -- --username admin --password 'your-strong-password'
+```
+
+Quote the password so the shell leaves special characters alone. Put the printed values in `/opt/dt-kb/.env`, changing the last three lines for production:
+
+```env
+KB_USERNAME=admin
+KB_PASSWORD_HASH=$2b$12$...        # from setup output
+SESSION_SECRET=...                 # from setup output (32 chars)
+PORT=3000
+DB_PATH=./data/kb.db               # = /opt/dt-kb/server/data/kb.db
+NODE_ENV=production
+```
+
+```sh
+chmod 600 .env
+```
+
+`.env` must stay writable by the app's user: changing the username or password in Settings rewrites it. `NODE_ENV=production` is required — without it the server only serves the API, not the web UI.
+
+### 3. Build and test-start
 
 ```sh
 npm run build
-npm run db:migrate
-npm start           # serves everything on the configured PORT
+node server/dist/index.js
 ```
 
-### systemd
+You should see `dt-kb API listening on http://0.0.0.0:3000`, and `server/data/kb.db` now exists. Stop it with Ctrl+C. (No `db:migrate` — the server migrates its own database on startup.)
+
+### 4. systemd
+
+Create `/etc/systemd/system/dt-kb.service`:
 
 ```ini
 [Unit]
@@ -121,26 +162,73 @@ After=network.target
 
 [Service]
 Type=simple
+User=youruser
 WorkingDirectory=/opt/dt-kb
-EnvironmentFile=/opt/dt-kb/.env
 ExecStart=/usr/bin/node server/dist/index.js
 Restart=on-failure
-User=kb
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-### Reverse proxy (nginx)
+No `EnvironmentFile=` is needed — the app loads `.env` itself. Use the path from `which node` if it isn't `/usr/bin/node`.
 
-```nginx
-location / {
-    proxy_pass http://localhost:3333;
-    proxy_set_header X-Forwarded-For $remote_addr;
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now dt-kb
+systemctl status dt-kb             # active (running)
+```
+
+### 5. HTTPS reverse proxy (Caddy)
+
+In production the session cookie is `Secure`, so the browser only keeps it over HTTPS — on plain `http://<ip>:3000` login appears to succeed and then drops you back at the login page. Caddy handles certificates for you:
+
+```sh
+sudo apt install -y caddy
+```
+
+`/etc/caddy/Caddyfile` — with a domain pointing at the server:
+
+```
+kb.example.com {
+    reverse_proxy localhost:3000
 }
 ```
 
-`X-Forwarded-For` is used by the login rate limiter (5 attempts / 60 s per IP), so set it when running behind a proxy.
+or for LAN / IP-only access (self-signed certificate; the browser warns once):
+
+```
+https://192.168.1.50 {
+    tls internal
+    reverse_proxy localhost:3000
+}
+```
+
+```sh
+sudo systemctl reload caddy
+```
+
+Caddy sets `X-Forwarded-For`, which the login rate limiter (5 attempts / 60 s per IP) relies on. With another proxy (e.g. nginx), set that header yourself.
+
+### 6. Firewall
+
+The app listens on all interfaces, so keep port 3000 closed and expose only SSH and HTTPS:
+
+```sh
+sudo ufw allow OpenSSH
+sudo ufw allow 80,443/tcp
+sudo ufw enable
+```
+
+Then open your `https://` address and log in with the credentials from step 2.
+
+### 7. Backups
+
+See [Data](#data) below — back up `server/data/kb.db` and `.env`. For a nightly consistent copy (`sudo apt install -y sqlite3`, create `~/kb-backups` first), add to `crontab -e`:
+
+```
+0 3 * * * sqlite3 /opt/dt-kb/server/data/kb.db ".backup '/home/youruser/kb-backups/kb-$(date +\%F).db'"
+```
 
 ## Updating
 
@@ -149,11 +237,10 @@ cd /opt/dt-kb
 git pull origin main
 npm install            # only needed if dependencies changed
 npm run build
-npm run db:migrate     # only needed if there are new migrations
 sudo systemctl restart dt-kb
 ```
 
-The database (`server/data/kb.db`) is untouched by these steps — it is git-ignored, so `git pull` never overwrites it. All four commands are idempotent — safe to run every time without checking what changed.
+The database (`server/data/kb.db`) is untouched by these steps — it is git-ignored, so `git pull` never overwrites it — and any new migrations are applied by the server when it restarts. All four commands are idempotent — safe to run every time without checking what changed.
 
 ## Data
 

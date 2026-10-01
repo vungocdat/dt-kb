@@ -1,11 +1,21 @@
 import { config as loadEnv } from 'dotenv';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+
+// This file runs from server/ in dev (tsx) and from server/dist/ in production,
+// so find the server package dir by walking up to its package.json.
+let serverDir = dirname(fileURLToPath(import.meta.url));
+while (!existsSync(join(serverDir, 'package.json'))) serverDir = dirname(serverDir);
+
+// Relative paths (DB_PATH, ./public, ./db/migrations) are resolved against the
+// working directory; pin it to server/ so `npm start` from the repo root, a
+// systemd unit, etc. all behave exactly like `npm run dev`.
+process.chdir(serverDir);
 
 // Load .env from the project root (one level up from server/).
 // Must run before any other import reads process.env.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const envFilePath = resolve(__dirname, '../.env');
+const envFilePath = resolve(serverDir, '../.env');
 loadEnv({ path: envFilePath });
 process.env.KB_ENV_PATH = envFilePath;
 

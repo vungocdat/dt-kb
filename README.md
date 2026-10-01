@@ -85,6 +85,8 @@ DB_PATH=./data/kb.db
 NODE_ENV=development
 ```
 
+`DB_PATH` is resolved relative to the `server/` directory (the server switches into it on startup, wherever you launch it from), so `./data/kb.db` means `server/data/kb.db`. The file and its folder are created on first start.
+
 `SESSION_SECRET` must be exactly 32 characters. Generate one independently with:
 
 ```sh
@@ -151,11 +153,19 @@ npm run db:migrate     # only needed if there are new migrations
 sudo systemctl restart dt-kb
 ```
 
-The database (`data/kb.db`) is untouched by these steps. All four commands are idempotent — safe to run every time without checking what changed.
+The database (`server/data/kb.db`) is untouched by these steps — it is git-ignored, so `git pull` never overwrites it. All four commands are idempotent — safe to run every time without checking what changed.
 
 ## Data
 
-All data lives in a single SQLite file (`data/kb.db` by default, controlled by `DB_PATH`). Back this file up — it is the only stateful component of the application.
+All data lives in a single SQLite file: **`server/data/kb.db`** by default (on a server cloned to `/opt/dt-kb`, that is `/opt/dt-kb/server/data/kb.db`). Set `DB_PATH` in `.env` to put it elsewhere — an absolute path is used as-is, a relative one is resolved against `server/`. Back this file up — it is the only stateful component of the application. Together with `.env` (credentials and session secret) it is everything you need to restore an install.
+
+SQLite runs in WAL mode, so next to `kb.db` you may see `kb.db-wal` and `kb.db-shm`; recent writes can still be sitting in the `-wal` file. To take a consistent copy while the app is running, use SQLite's online backup instead of `cp`:
+
+```sh
+sqlite3 /opt/dt-kb/server/data/kb.db ".backup '/path/to/backup/kb-$(date +%F).db'"
+```
+
+(Or stop the service and copy all three files.)
 
 Knowledge base pages, calendar notes (`calendar_notes`) and to-do tasks (`todos`) all live in that same file; the calendar and to-do tables are created automatically on startup, so no migration is needed for them. Tab order and the default page are browser preferences (`localStorage`), not stored in the database.
 

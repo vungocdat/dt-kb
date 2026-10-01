@@ -1,16 +1,13 @@
 import { existsSync, mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema.js';
 
-// Resolve default DB path relative to this file so it is CWD-independent.
-// db/client.ts lives in server/db/, so ../../data/kb.db → project root/data/kb.db.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_DB_PATH = join(__dirname, '../../data/kb.db');
-const DB_PATH = process.env.DB_PATH ?? DEFAULT_DB_PATH;
+// index.ts pins the working directory to server/, so this (and any relative
+// DB_PATH from .env) resolves to server/data/kb.db in dev and production alike.
+const DB_PATH = process.env.DB_PATH ?? './data/kb.db';
 
 /**
  * Resolve and ensure the directory for the SQLite file exists before opening.

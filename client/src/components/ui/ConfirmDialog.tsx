@@ -8,8 +8,8 @@ import { create } from 'zustand'
  *
  *   if (!(await confirmDialog({ title: 'Delete page?', confirmLabel: 'Delete' }))) return
  *
- * <ConfirmHost/> is mounted once in __root.tsx. Cancel is focused first so a
- * stray Enter never destroys anything; Escape or a backdrop click cancels.
+ * <ConfirmHost/> is mounted once in __root.tsx. The confirm button is focused
+ * first so Enter confirms; Escape or a backdrop click cancels.
  */
 
 interface ConfirmOptions {
@@ -42,7 +42,7 @@ export default function ConfirmHost() {
   useEffect(() => {
     if (!request) return
     returnFocus.current = document.activeElement as HTMLElement | null
-    cancelRef.current?.focus()
+    confirmRef.current?.focus()
   }, [request])
 
   if (!request) return null
@@ -60,6 +60,8 @@ export default function ConfirmHost() {
       e.preventDefault()
       settle(false)
     }
+    // An Enter still held from opening the dialog must not confirm it.
+    if (e.key === 'Enter' && e.repeat) e.preventDefault()
     // Two buttons: keep Tab cycling between them.
     if (e.key === 'Tab') {
       e.preventDefault()

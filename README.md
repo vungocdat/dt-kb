@@ -179,36 +179,93 @@ sudo systemctl enable --now dt-kb
 systemctl status dt-kb             # active (running)
 ```
 
-### 5. HTTPS reverse proxy (Caddy)
+### 5. HTTPS reverse proxy (nginx)
 
-In production the session cookie is `Secure`, so the browser only keeps it over HTTPS — on plain `http://<ip>:3000` login appears to succeed and then drops you back at the login page. Caddy handles certificates for you:
+In production the session cookie is `Secure`, so the browser only keeps it over HTTPS — on plain `http://<ip>:3000` login appears to succeed and then drops you back at the login page. Put nginx in front of the app and terminate TLS there. Pick **A** if you have a domain name pointing at the server, **B** for LAN / IP-only access.
+
+Two details in both configs below matter:
+
+- `client_max_body_size 50m` — space import uploads a ZIP, and nginx rejects bodies over 1 MB by default (413).
+- `X-Forwarded-For $remote_addr` — the login rate limiter (5 attempts / 60 s per IP) trusts the first address in that header, and `$remote_addr` replaces whatever the client sent. Don't use `$proxy_add_x_forwarded_for`: it *appends* to a client-supplied value, so anyone could dodge the limit by sending a fake header.
+
+#### A. With a domain (Let's Encrypt)
 
 ```sh
-sudo apt install -y caddy
+sudo apt install -y nginx certbot python3-certbot-nginx
 ```
 
-`/etc/caddy/Caddyfile` — with a domain pointing at the server:
+Create `/etc/nginx/sites-available/dt-kb`:
 
-```
-kb.example.com {
-    reverse_proxy localhost:3000
+```nginx
+server {
+    listen 80;
+    server_name kb.example.com;
+
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
-or for LAN / IP-only access (self-signed certificate; the browser warns once):
+Enable it, then let certbot add the certificate, the HTTPS `server` block and the HTTP→HTTPS redirect (port 80 must be reachable from the internet for the challenge — open the firewall in step 6 first):
 
+```sh
+sudo ln -s /etc/nginx/sites-available/dt-kb /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d kb.example.com
 ```
-https://192.168.1.50 {
-    tls internal
-    reverse_proxy localhost:3000
+
+Certbot installs a timer that renews the certificate automatically (`sudo certbot renew --dry-run` to check).
+
+#### B. LAN / IP only (self-signed certificate)
+
+```sh
+sudo apt install -y nginx
+sudo openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+  -keyout /etc/ssl/private/dt-kb.key -out /etc/ssl/certs/dt-kb.crt \
+  -subj "/CN=192.168.1.50" -addext "subjectAltName=IP:192.168.1.50"
+```
+
+Replace `192.168.1.50` with the server's IP. Create `/etc/nginx/sites-available/dt-kb`:
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    ssl_certificate     /etc/ssl/certs/dt-kb.crt;
+    ssl_certificate_key /etc/ssl/private/dt-kb.key;
+
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
 ```sh
-sudo systemctl reload caddy
+sudo ln -s /etc/nginx/sites-available/dt-kb /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Caddy sets `X-Forwarded-For`, which the login rate limiter (5 attempts / 60 s per IP) relies on. With another proxy (e.g. nginx), set that header yourself.
+The browser warns about the self-signed certificate once; accept it (or import `dt-kb.crt` into your OS/browser trust store to silence it).
 
 ### 6. Firewall
 
